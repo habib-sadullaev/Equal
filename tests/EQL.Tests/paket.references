@@ -1,0 +1,9 @@
+group Test
+    FParsec
+    Expecto
+    Microsoft.Net.Test.SDK
+    YoloDev.Expecto.TestSdk
+
+group net462
+    Expecto
+    Expecto.VisualStudio.TestAdapter
