@@ -10,13 +10,8 @@ group Test
   source https://api.nuget.org/v3/index.json
 
   nuget FParsec
-  nuget Expecto framework: netcoreapp3.1
+  nuget Expecto == 9.0.2
+  nuget Mono.Cecil == 0.11.3
   nuget Microsoft.Net.Test.SDK
   nuget YoloDev.Expecto.TestSdk >= 0.9.2 framework: netcoreapp3.1
-
-group net462
-  source https://api.nuget.org/v3/index.json
-  framework: net462
-
-  nuget Expecto == 8.9.1
-  nuget Expecto.VisualStudio.TestAdapter 10.0.2 version_in_path: true
+  nuget Expecto.VisualStudio.TestAdapter 10.0.2 version_in_path: true, framework: net462
