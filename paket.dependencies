@@ -1,17 +1,31 @@
 source https://api.nuget.org/v3/index.json
 
 storage: none
-framework: net462, netstandard2.0, netstandard2.1, netcoreapp2.1, netcoreapp3.1
+framework: net462, netstandard2.0, netstandard2.1, netcoreapp3.1
 
-nuget FParsec >= 1.1.1
 nuget FSharp.Core ~> 4.3 >= 4.3.4
+nuget FParsec >= 1.1.1
 
-group Test
+group netcore
   source https://api.nuget.org/v3/index.json
 
+  condition: netcore
+  framework: netcoreapp3.1
+
+  nuget FSharp.Core
   nuget FParsec
-  nuget Expecto == 9.0.2
-  nuget Mono.Cecil == 0.11.3
+  nuget Expecto
   nuget Microsoft.Net.Test.SDK
-  nuget YoloDev.Expecto.TestSdk >= 0.9.2 framework: netcoreapp3.1
-  nuget Expecto.VisualStudio.TestAdapter 10.0.2 version_in_path: true, framework: net462
+  nuget YoloDev.Expecto.TestSdk
+
+group netfx
+  source https://api.nuget.org/v3/index.json
+
+  condition: netfx
+  framework: net462
+
+  nuget FSharp.Core
+  nuget FParsec
+  nuget Expecto == 8.9.1
+  nuget Microsoft.Net.Test.SDK
+  nuget Expecto.VisualStudio.TestAdapter 10.0.2

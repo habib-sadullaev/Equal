@@ -4,6 +4,8 @@
     <OutputType>Exe</OutputType>
     <TargetFrameworks>net462;netcoreapp3.1</TargetFrameworks>
     <GenerateProgramFile>false</GenerateProgramFile>
+    <NETFX Condition="'$(TargetFramework)'=='net462'">true</NETFX>
+    <NETCORE Condition="'$(TargetFramework)'=='netcoreapp3.1'">true</NETCORE>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Sample.fs" />
