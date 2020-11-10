@@ -8,7 +8,7 @@
     <NETCORE Condition="'$(TargetFramework)'=='netcoreapp3.1'">true</NETCORE>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Sample.fs" />
+    <Compile Include="PrototypeTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>
@@ -23,6 +23,9 @@
     <PackageReference Update="FSharp.Core" Version="4.7.2" />
     <PackageReference Update="Expecto" Version="8.9.*" />
     <PackageReference Update="Mono.Cecil" Version="0.10.*" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EQL\EQL.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
