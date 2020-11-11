@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="PrototypeTests.fs" />
+    <Compile Include="ConstantTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>
