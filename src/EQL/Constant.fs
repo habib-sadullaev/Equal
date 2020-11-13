@@ -6,7 +6,7 @@ open FParsec
 open TypeShape.Core
 open TypeShape.Core.Utils
 
-let private mkConstExpr (x: 'a) = x |> Expr.Value |> Expr.Cast<'a>
+let inline constexpr (x: 'a) = x |> Expr.Value |> Expr.Cast<'a>
 
 let rec mkConst<'T> () : Parser<'T> =
     let res =
@@ -16,7 +16,7 @@ let rec mkConst<'T> () : Parser<'T> =
             use ctx = cache.CreateGenerationContext()
             mkConstCached<'T> ctx
     
-    res |>> mkConstExpr
+    res |>> constexpr
 
 and private mkConstCached<'T> (ctx: TypeGenerationContext) : Parser<'T, State> =
     let delay (c: Cell<Parser<'T, State>>) = parse { return! c.Value }

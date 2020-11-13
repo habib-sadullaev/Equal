@@ -2,15 +2,7 @@
 module EQL.Primitives
 
 open System
-open FSharp.Quotations
 open FParsec
-
-let (^) f x = f x
-
-type State = State
-type Parser<'T> = Parser<Expr<'T>, State>
-
-let state = State
 
 let parenthesize parser =
     parser

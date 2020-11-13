@@ -3,44 +3,17 @@
 open System
 open FSharp.Quotations
 open Expecto
-open FParsec
-open EQL.Primitives
 open EQL.Constant
 
-type FailInfo = { position: int64; message: string }
+let parser<'T> = mkConst<'T>()
 
-let parseConstant<'T> input =
-    match runParserOnString (mkConst<'T>() .>> eof) state "test" input with
-    | Success(v, _, _) -> Result.Ok v
-    | Failure(s, e, _) -> Result.Error { position = e.Position.Column; message = s.Trim() }
-
-let typeName<'T> =
-    let ty = typeof<'T>
-    if not ty.IsGenericType then ty.Name else
-    
-    let tyName = ty.Name |> Seq.takeWhile ^ (<>) '`' |> String.Concat
-    let args = ty.GenericTypeArguments |> Seq.map (fun t -> t.Name) |> String.concat ", "
-    sprintf "%s<%s>" tyName args
-
-let shouldPass input f (expected : 'T) =
+let parsedInto expected input =
     let name = sprintf "parses '%s' into '%s'" input typeName<'T>
-    test name {
-        match parseConstant<'T> input with
-        | Result.Ok(Patterns.Value(:? 'T as actual, _)) ->
-            f actual expected "They should be equal"
-        | _ -> failtest "The input should be valid"
-    }
+    test name { parsed parser<'T> expected input }
 
-let invalidInput<'T> expected =
-    let tester input =
-        match parseConstant<'T> input with
-        | Result.Error { position = pos; message = msg } ->
-            Expect.stringEnds msg expected.message  "The test should fail with the proper message" 
-            Expect.equal      pos expected.position "The test should fail with the proper position" 
-        | _ -> failtest "The input should be invalid"
-    typeName<'T>, tester
+let failedWith<'T> expected = typeName<'T>, failed parser<'T> expected
 
-let shouldFail input data =
+let invalidInputList input data =
     testList "invalid input" [
         yield! testFixture (fun f () -> f input) 
             [ for (typeName, tester) in data -> 
@@ -48,64 +21,66 @@ let shouldFail input data =
               testName, tester ]
     ]
 
-type TestEnum = One = 1uy | Two = 2uy
-
-let inline byteEnum<'T when 'T : enum<byte> > (value: byte) : 'T = LanguagePrimitives.EnumOfValue value
-
 [<Tests>]
 let tests =
     testList "constant tests" [
         testList "valid input" [
-            shouldPass "1" Expect.equal ^ 1
-            shouldPass "1" Expect.equal ^ Some 1
-            shouldPass "1" Expect.equal ^ Nullable 1
+            "1" |> parsedInto ^ constexpr 1
+            "1" |> parsedInto ^ constexpr ^ Some 1
+            "1" |> parsedInto ^ constexpr ^ Nullable 1
 
-            shouldPass "2" Expect.equal ^ 2M
-            shouldPass "2" Expect.equal ^ Some 2M
-            shouldPass "2" Expect.equal ^ Nullable 2M
+            "2" |> parsedInto ^ constexpr 2M
+            "2" |> parsedInto ^ constexpr ^ Some 2M
+            "2" |> parsedInto ^ constexpr ^ Nullable 2M
 
-            shouldPass "3" Expect.equal ^ 3.0
-            shouldPass "3" Expect.equal ^ Some 3.0
-            shouldPass "3" Expect.equal ^ Nullable 3.0
+            "3" |> parsedInto ^ constexpr 3.0
+            "3" |> parsedInto ^ constexpr ^ Some 3.0
+            "3" |> parsedInto ^ constexpr ^ Nullable 3.0
 
-            shouldPass "'4 o''clock'" Expect.equal ^ "4 o'clock" 
-            shouldPass "'4 o''clock'" Expect.equal ^ Some "4 o'clock" 
+            "'4 o''clock'" |> parsedInto ^ constexpr "4 o'clock" 
+            "'4 o''clock'" |> parsedInto ^ constexpr ^ Some "4 o'clock" 
 
-            shouldPass "3"   Expect.equal ^ byteEnum<TestEnum> 3uy
-            shouldPass "one" Expect.equal ^ Some ^ TestEnum.One
-            shouldPass "TWO" Expect.equal ^ Nullable TestEnum.Two
-            shouldPass "2"   Expect.equal ^ TestEnum.Two
+            "3"   |> parsedInto ^ constexpr ^ byteEnum<TestEnum> 3uy
+            "one" |> parsedInto ^ constexpr ^ Some ^ TestEnum.One
+            "TWO" |> parsedInto ^ constexpr ^ Nullable TestEnum.Two
+            "2"   |> parsedInto ^ constexpr ^ TestEnum.Two
 
-            shouldPass "('a', 'b', 'c')" Expect.equal         ^ List.map string [ 'a' .. 'c' ]
-            shouldPass "(6, 12, 18)"     Expect.equal         ^ [| 6.0 .. 6.0 .. 18.0 |]
-            shouldPass "(5, 5, 5)"       Expect.sequenceEqual ^ Seq.replicate 3 5
-        ]
-
-        shouldFail "()" [
-            invalidInput<string seq>   { position = 1L; message = "'\\''" }
-            invalidInput<string list>  { position = 1L; message = "'\\''" }
-            invalidInput<string array> { position = 1L; message = "'\\''" }
-
-            invalidInput<int seq>   { position = 1L; message = "integer number (32-bit, signed)" }
-            invalidInput<int list>  { position = 1L; message = "integer number (32-bit, signed)" }
-            invalidInput<int array> { position = 1L; message = "integer number (32-bit, signed)" }
+            "('a', 'b', 'c')" |> parsedInto ^ constexpr ^ List.map string [ 'a' .. 'c' ]
+            "(6, 12, 18)"     |> parsedInto ^ constexpr [| 6.0 .. 6.0 .. 18.0 |]
             
-            invalidInput<ResizeArray<string>> { position = 1L; message = "'\\''" }
-            invalidInput<ResizeArray<int>>    { position = 1L; message = "integer number (32-bit, signed)" }
+            test "parses '(5, 5, 5)' into 'int seq'" {
+                match validInput parser<int seq> "(5, 5, 5)" with
+                | Patterns.Value(:? (int seq) as actual, _) -> 
+                    Expect.sequenceEqual actual (Seq.replicate 3 5) "They should be equal"
+                
+                | _ -> ()
+            }
         ]
 
-        shouldFail "" [
-            invalidInput<int>           { position = 1L; message = "integer number (32-bit, signed)" }
-            invalidInput<int option>    { position = 1L; message = "integer number (32-bit, signed)" }
-            invalidInput<Nullable<int>> { position = 1L; message = "integer number (32-bit, signed)" }
+        invalidInputList "()" [
+            failedWith<string seq>   { position = 1L; message = "'\\''" }
+            failedWith<string list>  { position = 1L; message = "'\\''" }
+            failedWith<string array> { position = 1L; message = "'\\''" }
+
+            failedWith<int seq>   { position = 1L; message = "integer number (32-bit, signed)" }
+            failedWith<int list>  { position = 1L; message = "integer number (32-bit, signed)" }
+            failedWith<int array> { position = 1L; message = "integer number (32-bit, signed)" }
+            
+            failedWith<ResizeArray<string>> { position = 1L; message = "'\\''" }
+            failedWith<ResizeArray<int>>    { position = 1L; message = "integer number (32-bit, signed)" }
+        ]
+
+        invalidInputList "" [
+            failedWith<int>           { position = 1L; message = "integer number (32-bit, signed)" }
+            failedWith<int option>    { position = 1L; message = "integer number (32-bit, signed)" }
+            failedWith<Nullable<int>> { position = 1L; message = "integer number (32-bit, signed)" }
+            failedWith<float>         { position = 1L; message = "floating-point number" }
+            failedWith<decimal>       { position = 1L; message = "decimal number" }
+            failedWith<TestEnum>      { position = 1L; message = "TestEnum" }
                
-            invalidInput<float>         { position = 1L; message = "floating-point number" }
-            invalidInput<decimal>       { position = 1L; message = "decimal number" }
-            invalidInput<TestEnum>      { position = 1L; message = "TestEnum" }
-               
-            invalidInput<string seq>           { position = 1L; message = "'('" }
-            invalidInput<string list>          { position = 1L; message = "'('" }
-            invalidInput<string array>         { position = 1L; message = "'('" }
-            invalidInput<ResizeArray<string>>  { position = 1L; message = "'('" }
+            failedWith<string seq>           { position = 1L; message = "'('" }
+            failedWith<string list>          { position = 1L; message = "'('" }
+            failedWith<string array>         { position = 1L; message = "'('" }
+            failedWith<ResizeArray<string>>  { position = 1L; message = "'('" }
         ]
     ]

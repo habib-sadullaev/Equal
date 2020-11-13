@@ -1,4 +1,4 @@
-module Tests.PrototypeTests
+module PrototypeTests
 
 open Expecto
 open FParsec
@@ -28,8 +28,8 @@ let fail name parser =
         | Failure (s, e, _) -> { position = e.Position.Column; message = s.Trim() }
     let callback (input, { position = pos; message = msg}) () =
         let actual = parse parser input
-        Expect.stringEnds actual.message  msg "The test should fail with the proper message" 
-        Expect.equal      actual.position pos "The test should fail with the proper position" 
+        Expect.stringEnds actual.message  msg "Parsing should fail with the proper message" 
+        Expect.equal      actual.position pos "Parsing should fail with the proper position" 
     
     fun data ->
         testList (sprintf "incorrect input.%s" name)
@@ -38,6 +38,22 @@ let fail name parser =
 let bool input = parse comparison input
 let (.&&.) a b = And(a, b)
 let (.||.) a b = Or(a, b)
+
+[<RequireQualifiedAccess>]
+module ExpectedOperators = 
+    let [<Literal>] comparisonLevel =
+        """Expecting: end of input, '!=', '.', '<', '<=', '<>', '=', '>', '>=', 'ALL'
+(case-insensitive), 'ANY' (case-insensitive), 'CONTAINS' (case-insensitive),
+'ENDS WITH' (case-insensitive), 'IN' (case-insensitive), 'NOT IN'
+(case-insensitive) or 'STARTS WITH' (case-insensitive)"""
+
+    let [<Literal>] predicateLevel =
+        """Expecting: end of input, '!=', '.', '<', '<=', '<>', '=', '>', '>=', 'ALL'
+(case-insensitive), 'AND' (case-insensitive), 'ANY' (case-insensitive),
+'CONTAINS' (case-insensitive), 'ENDS WITH' (case-insensitive), 'IN'
+(case-insensitive), 'NOT IN' (case-insensitive), 'OR' (case-insensitive) or
+'STARTS WITH' (case-insensitive)"""
+        
 
 [<Tests>]
 let operandtests =
@@ -138,32 +154,22 @@ let operandtests =
                 "A.B.C Starts wItH", { position = 18L; message = "Expecting: '\\''" }
                 "'a' <> ",           { position = 8L;  message = "Expecting: property" }
                 "A.B.C <= ",         { position = 10L; message = "Expecting: property or '\\''" }
+                
                 "",                  { position = 1L;  message = "Expecting: property or '\\''" }
                 "'a'",               { position = 4L;  message = "Expecting: '!=', '<', '<=', '<>', '=', '>' or '>='" }
                 
-                "A || 'B'", 
-                    { position = 3L
-                      message  = """Expecting: end of input, '!=', '.', '<', '<=', '<>', '=', '>', '>=', 'ALL'
-(case-insensitive), 'ANY' (case-insensitive), 'CONTAINS' (case-insensitive),
-'ENDS WITH' (case-insensitive), 'IN' (case-insensitive), 'NOT IN'
-(case-insensitive) or 'STARTS WITH' (case-insensitive)""" }
+                "A || 'B'",          { position = 3L; message  = ExpectedOperators.comparisonLevel }
             ]
 
         fail "predicate" predicate
             [
-                "NOT A OR B AND C OR D", { position = 4L;  message = "Expecting: '('" }
-                "A.B.C IN 'aaa'",        { position = 10L; message = "Expecting: '('" }
-                "A.B.C contains aaa",    { position = 16L; message = "Expecting: '\\''" }
+                "NOT A OR B",         { position = 4L;  message = "Expecting: '('" }
+                "A.B.C IN 'aaa'",     { position = 10L; message = "Expecting: '('" }
+                "A.B.C contains aaa", { position = 16L; message = "Expecting: '\\''" }
                 
-                "'a'", { position = 4L;  message =  "Expecting: '!=', '<', '<=', '<>', '=', '>' or '>='" }
-                "",    { position = 1L; message =  "Expecting: property, '\\'', '(' or 'NOT' (case-insensitive)" }
+                "'a'",                { position = 4L;  message =  "Expecting: '!=', '<', '<=', '<>', '=', '>' or '>='" }
+                "",                   { position = 1L; message =  "Expecting: property, '\\'', '(' or 'NOT' (case-insensitive)" }
 
-                "A || B", 
-                    { position = 3L
-                      message  = """Expecting: end of input, '!=', '.', '<', '<=', '<>', '=', '>', '>=', 'ALL'
-(case-insensitive), 'AND' (case-insensitive), 'ANY' (case-insensitive),
-'CONTAINS' (case-insensitive), 'ENDS WITH' (case-insensitive), 'IN'
-(case-insensitive), 'NOT IN' (case-insensitive), 'OR' (case-insensitive) or
-'STARTS WITH' (case-insensitive)""" }
+                "A || B",             { position = 3L; message  = ExpectedOperators.predicateLevel }
             ]
   ]
