@@ -7,6 +7,7 @@
     <Compile Include="Core.fs" />
     <Compile Include="Primitives.fs" />
     <Compile Include="Constant.fs" />
+    <Compile Include="PropertyChain.fs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="paket.references" />
