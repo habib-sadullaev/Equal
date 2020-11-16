@@ -14,6 +14,9 @@ type TestRecord =
       HasValue: bool
       Int: int
       String: string
+      Float: float
+      Enum: TestEnum
+      OptionalEnum: TestEnum option
       TestArray: TestRecord [] }
 
 let testType = typeof<TestRecord>

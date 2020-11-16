@@ -14,6 +14,16 @@ let stringComparison () : Parser<Expr<string -> string -> bool>, 'u> =
         stringCIReturn "ENDS WITH"   <@ fun x y -> x.EndsWith   y @>
     ] .>> spaces
 
+let numberComparison ()  =
+    choice [
+        stringReturn "="  <@ (=)  @>
+        stringReturn "<>" <@ (<>) @>
+        stringReturn "<=" <@ (<=) @>
+        stringReturn "<"  <@ (<)  @>
+        stringReturn ">=" <@ (>=) @>
+        stringReturn ">"  <@ (>)  @>
+    ] .>> spaces
+
 let rec mkComparison param =
     mkPropChain param >>= mkComparisonAux |>> Expr.cleanup
 
@@ -26,5 +36,19 @@ and mkComparisonAux prop =
                 let! cmp = stringComparison()
                 let! rhs = mkConst()
                 return <@ (%cmp) %lhs %rhs @> }
+
+    | Shape.Comparison s ->
+        s.Accept { new IComparisonVisitor<_> with
+            member _.Visit<'t when 't: comparison>() =
+                let lhs = Expr.cast<'t> prop
+
+                let comparison = parse {
+                    let! cmp = numberComparison()
+                    let! rhs = mkConst()
+                    return <@ (%cmp) %lhs %rhs @>
+                }
+
+                comparison
+        }
 
     | _ -> unsupported prop.Type

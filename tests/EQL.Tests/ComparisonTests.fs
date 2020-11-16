@@ -25,6 +25,16 @@ let tests =
         "String ContainS 'bbb'"    |> parsedInto <@ (%param).String.Contains   "bbb" @>
         "String ENDS WITH 'ccc'"   |> parsedInto <@ (%param).String.EndsWith   "ccc" @>
 
+        "Parent.Parent.Int <  1"    |> parsedInto <@ (%param).Parent.Parent.Int <  1 @>
+        "Parent.Parent.Int <= 2"    |> parsedInto <@ (%param).Parent.Parent.Int <= 2 @>
+        "Parent.Parent.Int =  3"    |> parsedInto <@ (%param).Parent.Parent.Int =  3 @>
+        "Parent.Parent.Int <> 4"    |> parsedInto <@ (%param).Parent.Parent.Int <> 4 @>
+        "Parent.Parent.Int >  5"    |> parsedInto <@ (%param).Parent.Parent.Int >  5 @>
+        "Parent.Parent.Int >= 6"    |> parsedInto <@ (%param).Parent.Parent.Int >= 6 @>
+        "Parent.Parent.Float<=5"    |> parsedInto <@ (%param).Parent.Parent.Float <= 5. @>
+        "Parent.Parent.Enum   <  1" |> parsedInto <@ (%param).Parent.Parent.Enum < TestEnum.One @>
+        "Parent.OptionalEnum=two" |> parsedInto <@ (%param).Parent.OptionalEnum = %(constExpr ^ Some ^ TestEnum.Two) @>
+
         "Parent.HasValue = true" |> failedWith { position = 17L; message = "end of input" }
         
         "String contain 'zzz'" 
@@ -34,4 +44,5 @@ let tests =
 'STARTS WITH' (case-insensitive)"
         }
 
+        "Parent.Parent.Int" |> failedWith { position = 18L; message = "'<', '<=', '<>', '=', '>' or '>='" }
     ]
