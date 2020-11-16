@@ -11,6 +11,7 @@ type TestEnum = One = 1uy | Two = 2uy
 
 type TestRecord =
     { mutable Parent: TestRecord
+      HasValue: bool
       Int: int
       String: string
       TestArray: TestRecord [] }
