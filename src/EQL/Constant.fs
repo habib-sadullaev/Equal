@@ -6,8 +6,6 @@ open FParsec
 open TypeShape.Core
 open TypeShape.Core.Utils
 
-let inline constexpr (x: 'a) = x |> Expr.Value |> Expr.Cast<'a>
-
 let rec mkConst<'T> () : Parser<'T> =
     let res =
         match cache.TryFind() with
@@ -16,7 +14,7 @@ let rec mkConst<'T> () : Parser<'T> =
             use ctx = cache.CreateGenerationContext()
             mkConstCached<'T> ctx
     
-    res |>> constexpr
+    res |>> constExpr
 
 and private mkConstCached<'T> (ctx: TypeGenerationContext) : Parser<'T, State> =
     let delay (c: Cell<Parser<'T, State>>) = parse { return! c.Value }
@@ -87,7 +85,7 @@ and private mkConstAux<'T> (ctx: TypeGenerationContext) : Parser<'T, State> =
                 mkConstCached<'t list> ctx |>> wrapWith ^ fun vs -> seq { for v in vs -> v }
         }
 
-    | x -> fail ^ sprintf "unsupported type %A" x.Type
+    | x -> unsupported x.Type
 
 and private cache : TypeCache = TypeCache()
 

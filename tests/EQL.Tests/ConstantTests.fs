@@ -14,7 +14,7 @@ let parsedInto expected input =
 let failedWith<'T> expected = typeName<'T>, failed parser<'T> expected
 
 let invalidInputList input data =
-    testList "invalid input" [
+    testList "with invalid input" [
         yield! testFixture (fun f () -> f input) 
             [ for (typeName, tester) in data -> 
               let testName = sprintf "fails parsing '%s' into '%s'" input typeName
@@ -23,30 +23,30 @@ let invalidInputList input data =
 
 [<Tests>]
 let tests =
-    testList "constant tests" [
-        testList "valid input" [
-            "1" |> parsedInto ^ constexpr 1
-            "1" |> parsedInto ^ constexpr ^ Some 1
-            "1" |> parsedInto ^ constexpr ^ Nullable 1
+    testList "constant parser" [
+        testList "with valid input" [
+            "1" |> parsedInto ^ constExpr 1
+            "1" |> parsedInto ^ constExpr ^ Some 1
+            "1" |> parsedInto ^ constExpr ^ Nullable 1
 
-            "2" |> parsedInto ^ constexpr 2M
-            "2" |> parsedInto ^ constexpr ^ Some 2M
-            "2" |> parsedInto ^ constexpr ^ Nullable 2M
+            "2" |> parsedInto ^ constExpr 2M
+            "2" |> parsedInto ^ constExpr ^ Some 2M
+            "2" |> parsedInto ^ constExpr ^ Nullable 2M
 
-            "3" |> parsedInto ^ constexpr 3.0
-            "3" |> parsedInto ^ constexpr ^ Some 3.0
-            "3" |> parsedInto ^ constexpr ^ Nullable 3.0
+            "3" |> parsedInto ^ constExpr 3.0
+            "3" |> parsedInto ^ constExpr ^ Some 3.0
+            "3" |> parsedInto ^ constExpr ^ Nullable 3.0
 
-            "'4 o''clock'" |> parsedInto ^ constexpr "4 o'clock" 
-            "'4 o''clock'" |> parsedInto ^ constexpr ^ Some "4 o'clock" 
+            "'4 o''clock'" |> parsedInto ^ constExpr "4 o'clock" 
+            "'4 o''clock'" |> parsedInto ^ constExpr ^ Some "4 o'clock" 
 
-            "3"   |> parsedInto ^ constexpr ^ byteEnum<TestEnum> 3uy
-            "one" |> parsedInto ^ constexpr ^ Some ^ TestEnum.One
-            "TWO" |> parsedInto ^ constexpr ^ Nullable TestEnum.Two
-            "2"   |> parsedInto ^ constexpr ^ TestEnum.Two
+            "3"   |> parsedInto ^ constExpr ^ byteEnum<TestEnum> 3uy
+            "one" |> parsedInto ^ constExpr ^ Some ^ TestEnum.One
+            "TWO" |> parsedInto ^ constExpr ^ Nullable TestEnum.Two
+            "2"   |> parsedInto ^ constExpr ^ TestEnum.Two
 
-            "('a', 'b', 'c')" |> parsedInto ^ constexpr ^ List.map string [ 'a' .. 'c' ]
-            "(6, 12, 18)"     |> parsedInto ^ constexpr [| 6.0 .. 6.0 .. 18.0 |]
+            "('a', 'b', 'c')" |> parsedInto ^ constExpr ^ List.map string [ 'a' .. 'c' ]
+            "(6, 12, 18)"     |> parsedInto ^ constExpr [| 6.0 .. 6.0 .. 18.0 |]
             
             test "parses '(5, 5, 5)' into 'int seq'" {
                 match validInput parser<int seq> "(5, 5, 5)" with
