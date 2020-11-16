@@ -7,19 +7,16 @@ open EQL.Constant
 
 let parser<'T> = mkConst<'T>()
 
-let parsedInto expected input =
+let inline parsedInto expected input =
     let name = sprintf "parses '%s' into '%s'" input typeName<'T>
     test name { parsed parser<'T> expected input }
 
-let failedWith<'T> expected = typeName<'T>, failed parser<'T> expected
+let inline failedWith<'T> expected input = 
+    let testName = sprintf "fails parsing '%s' into '%s'" input typeName<'T>
+    test testName { failed parser<'T> expected input }
 
-let invalidInputList input data =
-    testList "with invalid input" [
-        yield! testFixture (fun f () -> f input) 
-            [ for (typeName, tester) in data -> 
-              let testName = sprintf "fails parsing '%s' into '%s'" input typeName
-              testName, tester ]
-    ]
+let testListWith input data =
+    testList "with invalid input" [ for tester in data -> tester input ]
 
 [<Tests>]
 let tests =
@@ -57,30 +54,30 @@ let tests =
             }
         ]
 
-        invalidInputList "()" [
-            failedWith<string seq>   { position = 1L; message = "'\\''" }
-            failedWith<string list>  { position = 1L; message = "'\\''" }
-            failedWith<string array> { position = 1L; message = "'\\''" }
+        testListWith "()" [
+            failedWith<string seq>   { position = 1L; errors = [ "'" ] }
+            failedWith<string list>  { position = 1L; errors = [ "'" ] }
+            failedWith<string array> { position = 1L; errors = [ "'" ] }
 
-            failedWith<int seq>   { position = 1L; message = "integer number (32-bit, signed)" }
-            failedWith<int list>  { position = 1L; message = "integer number (32-bit, signed)" }
-            failedWith<int array> { position = 1L; message = "integer number (32-bit, signed)" }
+            failedWith<int seq>   { position = 1L; errors = [ "integer number (32-bit, signed)" ] }
+            failedWith<int list>  { position = 1L; errors = [ "integer number (32-bit, signed)" ] }
+            failedWith<int array> { position = 1L; errors = [ "integer number (32-bit, signed)" ] }
             
-            failedWith<ResizeArray<string>> { position = 1L; message = "'\\''" }
-            failedWith<ResizeArray<int>>    { position = 1L; message = "integer number (32-bit, signed)" }
+            failedWith<ResizeArray<string>> { position = 1L; errors = [ "'" ] }
+            failedWith<ResizeArray<int>>    { position = 1L; errors = [ "integer number (32-bit, signed)" ] }
         ]
 
-        invalidInputList "" [
-            failedWith<int>           { position = 1L; message = "integer number (32-bit, signed)" }
-            failedWith<int option>    { position = 1L; message = "integer number (32-bit, signed)" }
-            failedWith<Nullable<int>> { position = 1L; message = "integer number (32-bit, signed)" }
-            failedWith<float>         { position = 1L; message = "floating-point number" }
-            failedWith<decimal>       { position = 1L; message = "decimal number" }
-            failedWith<TestEnum>      { position = 1L; message = "TestEnum" }
+        testListWith "" [
+            failedWith<int>           { position = 1L; errors = [ "integer number (32-bit, signed)" ] }
+            failedWith<int option>    { position = 1L; errors = [ "integer number (32-bit, signed)" ] }
+            failedWith<Nullable<int>> { position = 1L; errors = [ "integer number (32-bit, signed)" ] }
+            failedWith<float>         { position = 1L; errors = [ "floating-point number"] }
+            failedWith<decimal>       { position = 1L; errors = [ "decimal number" ] }
+            failedWith<TestEnum>      { position = 1L; errors = [ "TestEnum" ] }
                
-            failedWith<string seq>           { position = 1L; message = "'('" }
-            failedWith<string list>          { position = 1L; message = "'('" }
-            failedWith<string array>         { position = 1L; message = "'('" }
-            failedWith<ResizeArray<string>>  { position = 1L; message = "'('" }
+            failedWith<string seq>           { position = 1L; errors = [ "(" ] }
+            failedWith<string list>          { position = 1L; errors = [ "(" ] }
+            failedWith<string array>         { position = 1L; errors = [ "(" ] }
+            failedWith<ResizeArray<string>>  { position = 1L; errors = [ "(" ] }
         ]
     ]

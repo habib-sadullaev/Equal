@@ -26,7 +26,7 @@ let inline parsedInto expected input =
 
 let inline failedWith expected input =
     let name = sprintf "fails parsing '%s'" (input |> String.map ^ function '.' -> '_' | x -> x) 
-    let expected = { expected with message = sprintf "'property of %s'" expected.message } 
+    let expected = { expected with errors = expected.errors |> List.map ^ sprintf "property of %s" } 
     test name { failed parser expected input }
 
 [<Tests>]
@@ -61,15 +61,15 @@ let tests =
         }
 
         testList "with invalid input" [
-            ""               |> failedWith { position = 1L;  message = testType.FullName }
-            "Int."           |> failedWith { position = 5L;  message = typeof<int>.FullName }
-            "Int2"           |> failedWith { position = 1L;  message = sprintf "%A" testType }
-            "Int2."          |> failedWith { position = 1L;  message = sprintf "%O" testType }
-            "Parent1."       |> failedWith { position = 1L;  message = testType.FullName }
-            "Parent."        |> failedWith { position = 8L;  message = testType.FullName }
-            "Parent.String." |> failedWith { position = 15L; message = typeof<string>.FullName }
+            ""               |> failedWith { position = 1L;  errors = [ testType.FullName ] }
+            "Int."           |> failedWith { position = 5L;  errors = [ typeof<int>.FullName ] }
+            "Int2"           |> failedWith { position = 1L;  errors = [ sprintf "%A" testType ] }
+            "Int2."          |> failedWith { position = 1L;  errors = [ sprintf "%O" testType ] }
+            "Parent1."       |> failedWith { position = 1L;  errors = [ testType.FullName ] }
+            "Parent."        |> failedWith { position = 8L;  errors = [ testType.FullName ] }
+            "Parent.String." |> failedWith { position = 15L; errors = [ typeof<string>.FullName ] }
             
-            "Parent.Parent.String1.Length" |> failedWith { position = 15L; message = testType.FullName }
-            "Parent.Parent.String1.Length."|> failedWith { position = 15L; message = testType.FullName }
+            "Parent.Parent.String1.Length" |> failedWith { position = 15L; errors = [ testType.FullName ] }
+            "Parent.Parent.String1.Length."|> failedWith { position = 15L; errors = [ testType.FullName ] }
         ]
     ]

@@ -5,7 +5,7 @@ open FSharp.Quotations
 open Expecto
 open FParsec
 
-type FailInfo = { position: int64; message: string }
+type FailInfo = { position: int64; errors: string list }
 
 type TestEnum = One = 1uy | Two = 2uy
 
@@ -44,12 +44,22 @@ let typeName<'T> =
 let private parse parser input =
     match runParserOnString (parser .>> eof) state "test" input with
     | Success(v, _, _) -> Result.Ok v
-    | Failure(s, e, _) -> Result.Error { position = e.Position.Column; message = s.Trim() }
+    | Failure(_, e, _) -> 
+        let rec gatherErrs errs = 
+            [ for err in errs |> ErrorMessageList.ToSortedArray do
+              match err with
+              | Expected msg 
+              | ExpectedString msg 
+              | ExpectedStringCI msg -> msg
+              | NestedError (_, _, errs) -> yield! gatherErrs errs
+              | _ -> ()
+            ]
+        Result.Error { position = e.Position.Column; errors = gatherErrs e.Messages }
 
 let validInput parser input =
     match parse parser input with
     | Result.Ok actual -> actual
-    | Result.Ok _ | Result.Error _ -> failtest "The input should be valid"
+    | Result.Error info -> failtest ^ sprintf "The input should be valid\n%A" info
 
 let invalidInput parser input =
     match parse parser input with
@@ -57,11 +67,12 @@ let invalidInput parser input =
     | Result.Ok _ -> failtest "The input should be invalid"
 
 let failed parser expected input =
-    let { position = pos; message = msg } = invalidInput parser input
-    Expect.equal      pos expected.position
-        ^ sprintf "incorrect error position\ncurrently: '%d'\nexpecting: '%d'" expected.position pos
-    Expect.stringEnds msg expected.message  "Parsing should fail with the proper message"
+    let { position = pos; errors = errs } = invalidInput parser input
+    Expect.equal pos expected.position
+        ^ sprintf "incorrect error position\nexpected: '%d'\n  actual: '%d'" expected.position pos
+    Expect.equal errs expected.errors
+        ^ sprintf "Incorrect error message\nexpected:\n%A\n  actual:\n%A" errs expected.errors
 
 let parsed parser expected input =
     let actual = validInput parser input
-    Expect.equal actual expected ^ sprintf "currently:\n%A\nshould be:\n%A\n" actual expected
+    Expect.equal actual expected ^ sprintf "expected:\n%A\n  actual:\n%A\n" expected actual

@@ -19,37 +19,26 @@ let inline failedWith expected input =
 [<Tests>]
 let tests =
     testList "comparison parser" [
-        "Parent.Parent.HasValue" |> parsedInto <@ (%param).Parent.Parent.HasValue @>
+        "Parent.Parent.HasValue"   |> parsedInto <@ (%param).Parent.Parent.HasValue @>
         
         "String starts with 'aaa'" |> parsedInto <@ (%param).String.StartsWith "aaa" @>
         "String ContainS 'bbb'"    |> parsedInto <@ (%param).String.Contains   "bbb" @>
         "String ENDS WITH 'ccc'"   |> parsedInto <@ (%param).String.EndsWith   "ccc" @>
 
-        "Parent.Parent.Int <  1"    |> parsedInto <@ (%param).Parent.Parent.Int <  1 @>
-        "Parent.Parent.Int <= 2"    |> parsedInto <@ (%param).Parent.Parent.Int <= 2 @>
-        "Parent.Parent.Int =  3"    |> parsedInto <@ (%param).Parent.Parent.Int =  3 @>
-        "Parent.Parent.Int <> 4"    |> parsedInto <@ (%param).Parent.Parent.Int <> 4 @>
-        "Parent.Parent.Int >  5"    |> parsedInto <@ (%param).Parent.Parent.Int >  5 @>
-        "Parent.Parent.Int >= 6"    |> parsedInto <@ (%param).Parent.Parent.Int >= 6 @>
-        "Parent.Parent.Float<=5"    |> parsedInto <@ (%param).Parent.Parent.Float <= 5. @>
-        "Parent.Parent.Enum   <  1" |> parsedInto <@ (%param).Parent.Parent.Enum < TestEnum.One @>
-        "Parent.OptionalEnum=two"   |> parsedInto <@ (%param).Parent.OptionalEnum = %(constExpr ^ Some ^ TestEnum.Two) @>
+        "Parent.Parent.Int <  1"   |> parsedInto <@ (%param).Parent.Parent.Int <  1 @>
+        "Parent.Parent.Int <= 2"   |> parsedInto <@ (%param).Parent.Parent.Int <= 2 @>
+        "Parent.Parent.Int =  3"   |> parsedInto <@ (%param).Parent.Parent.Int =  3 @>
+        "Parent.Parent.Int <> 4"   |> parsedInto <@ (%param).Parent.Parent.Int <> 4 @>
+        "Parent.Parent.Int >  5"   |> parsedInto <@ (%param).Parent.Parent.Int >  5 @>
+        "Parent.Parent.Int >= 6"   |> parsedInto <@ (%param).Parent.Parent.Int >= 6 @>
+        "Parent.Parent.Float<=5"   |> parsedInto <@ (%param).Parent.Parent.Float <= 5. @>
+        "Parent.Parent.Enum  <  1" |> parsedInto <@ (%param).Parent.Parent.Enum < TestEnum.One @>
+        "Parent.OptionalEnum=two"  |> parsedInto <@ (%param).Parent.OptionalEnum = %(constExpr ^ Some ^ TestEnum.Two) @>
 
         "Parent.Int in (4, 9)"     |> parsedInto <@ Array.contains (%param).Parent.Int %(constExpr [| 4; 9 |]) @>
         "Parent.Int NOT IN (4, 9)" |> parsedInto <@ not (Array.contains (%param).Parent.Int %(constExpr [| 4; 9 |])) @>
 
-        "Parent.HasValue = true" |> failedWith { position = 17L; message = "end of input" }
-        
-        "String contain 'zzz'" 
-        |> failedWith { 
-            position = 8L
-            message = "'CONTAINS' (case-insensitive), 'ENDS WITH' (case-insensitive) or
-'STARTS WITH' (case-insensitive)"
-        }
-
-        "Parent.Parent.Int"
-        |> failedWith {
-            position = 18L
-            message = "'<', '<=', '<>', '=', '>', '>=', 'IN' (case-insensitive) or 'NOT IN'
-(case-insensitive)" }
+        "HasValue = true"   |> failedWith { position = 10L; errors = [ "end of input" ] }
+        "String = 'zzz'"    |> failedWith { position = 8L;  errors = [ "CONTAINS"; "ENDS WITH"; "STARTS WITH" ] }
+        "Parent.Parent.Int" |> failedWith { position = 18L; errors = [ "<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN" ] }
     ]
