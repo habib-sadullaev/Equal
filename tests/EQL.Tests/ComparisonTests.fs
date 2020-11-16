@@ -33,7 +33,10 @@ let tests =
         "Parent.Parent.Int >= 6"    |> parsedInto <@ (%param).Parent.Parent.Int >= 6 @>
         "Parent.Parent.Float<=5"    |> parsedInto <@ (%param).Parent.Parent.Float <= 5. @>
         "Parent.Parent.Enum   <  1" |> parsedInto <@ (%param).Parent.Parent.Enum < TestEnum.One @>
-        "Parent.OptionalEnum=two" |> parsedInto <@ (%param).Parent.OptionalEnum = %(constExpr ^ Some ^ TestEnum.Two) @>
+        "Parent.OptionalEnum=two"   |> parsedInto <@ (%param).Parent.OptionalEnum = %(constExpr ^ Some ^ TestEnum.Two) @>
+
+        "Parent.Int in (4, 9)"     |> parsedInto <@ Array.contains (%param).Parent.Int %(constExpr [| 4; 9 |]) @>
+        "Parent.Int NOT IN (4, 9)" |> parsedInto <@ not (Array.contains (%param).Parent.Int %(constExpr [| 4; 9 |])) @>
 
         "Parent.HasValue = true" |> failedWith { position = 17L; message = "end of input" }
         
@@ -44,5 +47,9 @@ let tests =
 'STARTS WITH' (case-insensitive)"
         }
 
-        "Parent.Parent.Int" |> failedWith { position = 18L; message = "'<', '<=', '<>', '=', '>' or '>='" }
+        "Parent.Parent.Int"
+        |> failedWith {
+            position = 18L
+            message = "'<', '<=', '<>', '=', '>', '>=', 'IN' (case-insensitive) or 'NOT IN'
+(case-insensitive)" }
     ]

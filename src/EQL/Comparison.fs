@@ -24,6 +24,12 @@ let numberComparison ()  =
         stringReturn ">"  <@ (>)  @>
     ] .>> spaces
 
+let inclusion () =
+    choice [
+        stringCIReturn "IN"     <@ Array.contains @>
+        stringCIReturn "NOT IN" <@ fun x y -> not (Array.contains x y) @>
+    ] .>> spaces
+
 let rec mkComparison param =
     mkPropChain param >>= mkComparisonAux |>> Expr.cleanup
 
@@ -48,7 +54,13 @@ and mkComparisonAux prop =
                     return <@ (%cmp) %lhs %rhs @>
                 }
 
-                comparison
+                let inclusion = parse {
+                    let! cmp = inclusion()
+                    let! rhs = mkConst()
+                    return <@ (%cmp) %lhs %rhs @>
+                 }
+
+                comparison <|> inclusion
         }
 
     | _ -> unsupported prop.Type
