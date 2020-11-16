@@ -15,7 +15,7 @@ let stringComparison () : Parser<Expr<string -> string -> bool>, 'u> =
     ] .>> spaces
 
 let rec mkComparison param =
-    mkPropChain param >>= mkComparisonAux
+    mkPropChain param >>= mkComparisonAux |>> Expr.cleanup
 
 and mkComparisonAux prop =
     match TypeShape.Create prop.Type with

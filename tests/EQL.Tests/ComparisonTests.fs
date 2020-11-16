@@ -1,6 +1,5 @@
 ﻿module ComparisonTests
 
-open System
 open FSharp.Quotations
 open Expecto
 open FParsec
@@ -22,9 +21,9 @@ let tests =
     testList "comparison parser" [
         "Parent.Parent.HasValue" |> parsedInto <@ (%param).Parent.Parent.HasValue @>
         
-        "String starts with 'aaa'"  |> parsedInto <@ (%param).String.StartsWith %(constExpr "aaa") @>
-        "String ContainS 'bbb'"     |> parsedInto <@ (%param).String.Contains   %(constExpr "bbb") @>
-        "String ENDS WITH 'ccc'"    |> parsedInto <@ (%param).String.EndsWith   %(constExpr "ccc") @>
+        "String starts with 'aaa'" |> parsedInto <@ (%param).String.StartsWith "aaa" @>
+        "String ContainS 'bbb'"    |> parsedInto <@ (%param).String.Contains   "bbb" @>
+        "String ENDS WITH 'ccc'"   |> parsedInto <@ (%param).String.EndsWith   "ccc" @>
 
         "Parent.HasValue = true" |> failedWith { position = 17L; message = "end of input" }
         

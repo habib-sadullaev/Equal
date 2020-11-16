@@ -8,6 +8,7 @@
     <Compile Include="Primitives.fs" />
     <Compile Include="Constant.fs" />
     <Compile Include="PropertyChain.fs" />
+    <Compile Include="Expr.fs" />
     <Compile Include="Comparison.fs" />
   </ItemGroup>
   <ItemGroup>
