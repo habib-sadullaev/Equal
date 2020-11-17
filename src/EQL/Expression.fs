@@ -22,19 +22,20 @@ let rec mkLambda<'T> () : Parser<Expr<'T>, State> =
 and mkComparison param =
     mkPropChain param >>= mkComparisonAux 
     |> mkLogicalChain
-    |>> Expr.cleanup
 
-and mkLogicalChain p =
+and mkLogicalChain parser =
     let mkOperation operator operand =
         operator .>> spaces |> chainl1 (operand .>> spaces)
     
     let operand, operandRef = createParserForwardedToRef()
-    
+
     let operation = mkOperation OR (mkOperation AND operand)
+    let nestedOperation = parenthesize operation
+    let negate = NOT nestedOperation
     
-    operandRef := parenthesize operation <|> p
+    operandRef := choice [ negate; nestedOperation; parser ]
     
-    operation
+    operation |>> Expr.cleanup
 
 and mkComparisonAux prop =
     match TypeShape.Create prop.Type with

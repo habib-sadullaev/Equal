@@ -77,3 +77,5 @@ let mkOperator name operator = stringCIReturn name operator .>> spaces
 
 let AND : Parser<_, State> = mkOperator "AND" ^ fun lhs rhs -> <@ %lhs && %rhs @>
 let OR  : Parser<_, State> = mkOperator "OR"  ^ fun lhs rhs -> <@ %lhs || %rhs @>
+
+let NOT parser = skipStringCI "NOT" >>. spaces >>. parser |>> fun x -> <@ not %x @>
