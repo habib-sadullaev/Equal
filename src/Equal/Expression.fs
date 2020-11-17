@@ -4,83 +4,93 @@ open System
 open FSharp.Quotations
 open FParsec
 open TypeShape.Core
+open TypeShape.Core.Utils
 open TypeShape.Core.StagingExtensions
 open Equal.Constant
 open Equal.PropertyChain
 
-let rec mkLambda<'T> () : Parser<Expr<'T>, State> =
-    let shape = shapeof<'T>
-    match shape with
-    | Shape.FSharpFunc s ->
-        parse { let! param = newParam s.Domain.Type
-                let! body = mkComparison ^ Expr.Var param
+let rec mkLambda<'T> () : Parser<'T -> bool> =
+    match cache.TryFind() with
+    | Some v -> v
+    | None ->
+        use ctx = cache.CreateGenerationContext()
+        mkLambdaCached<'T> ctx
 
-                return Expr.Lambda(param, body) |> Expr.cast<'T> |> Expr.cleanup }
+and private mkLambdaCached<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
+    let delay (c: Cell<Parser<'T -> bool>>) = parse.Delay ^ fun () -> c.Value
+    match ctx.InitOrGetCachedValue delay with
+    | Cached(value = v) -> v
+    | NotCached t ->
+        let v = mkLambdaAux<'T> ctx
+        ctx.Commit t v
 
-    | _ -> unsupported typeof<'T>
-
-and mkComparison param =
-    mkPropChain param >>= mkComparisonAux 
-    |> mkLogicalChain
-
-and mkLogicalChain parser =
-    let mkOperation operator operand =
-        operator .>> spaces |> chainl1 (operand .>> spaces)
-    
-    let operand, operandRef = createParserForwardedToRef()
-
-    let operation = mkOperation OR (mkOperation AND operand)
-    let nestedOperation = parenthesize operation
-    let negate = NOT nestedOperation
-    
-    operandRef := choice [ negate; nestedOperation; parser ]
-    
-    operation |>> Expr.cleanup
-
-and mkComparisonAux prop =
-    match TypeShape.Create prop.Type with
-    | Shape.Bool -> preturn ^ Expr.cast prop
+and private mkLambdaAux<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
+    let wrap (e: Expr<'a -> bool>) = unbox<Expr<'T -> bool>> e
+    match shapeof<'T> with
+    | Shape.Bool -> preturn ^ wrap ^ <@ fun x -> x @>
 
     | Shape.String ->
-        parse { let lhs = Expr.cast prop
-                let! cmp = stringComparison()
-                let! rhs = mkConst()
-                return <@ (%cmp) %lhs %rhs @> }
+        parse { 
+            let! cmp = stringComparison()
+            let! rhs = mkConst()
+            return wrap <@ fun lhs -> (%cmp) lhs %rhs @> }
     
     | Shape.Enumerable s ->
         s.Accept { new IEnumerableVisitor<_> with
             member _.Visit<'c, 'e when 'c :> 'e seq>() =
-                let source = Expr.cast<'c> prop
-
                 let emptiness = parse { 
                     let! cmp = emptiness()
-                    return <@ (%cmp) %source @>
+                    return wrap <@ fun (source : 'c) -> (%cmp) source @>
                 }
 
                 let existence = parse { 
                     let! cmp = existence()
                     let! pred = parenthesize ^ mkLambda()
-                    return <@ (%cmp) %pred %source @> 
+                    return wrap <@ fun (source: 'c) -> (%cmp) %pred source @> 
                 }
 
                 emptiness <|> existence
         }
-
-    | Shape.Comparison s ->
+    
+    | Shape.FSharpOption _ & Shape.Comparison s ->
         s.Accept { new IComparisonVisitor<_> with
             member _.Visit<'t when 't: comparison>() =
-                let lhs = Expr.cast<'t> prop
-
                 let comparison = parse {
                     let! cmp = numberComparison()
                     let! rhs = mkConst()
-                    return <@ (%cmp) %lhs %rhs @>
+                    return wrap <@ fun (lhs: 't) -> (%cmp) lhs %rhs @>
                 }
 
                 let inclusion = parse {
                     let! cmp = inclusion()
                     let! rhs = mkConst()
-                    return <@ (%cmp) %lhs %rhs @>
+                    return wrap <@ fun (lhs: 't) -> (%cmp) lhs %rhs @>
+                }
+
+                comparison <|> inclusion
+            }
+
+    | Shape.Poco _ ->
+            parse { 
+                let! param = newParam typeof<'T>
+                let! body = mkComparison ^ Expr.Var param
+
+                return Expr.Lambda(param, body) |> Expr.cast<'T -> bool>
+            }
+
+    | Shape.Comparison s ->
+        s.Accept { new IComparisonVisitor<_> with
+            member _.Visit<'t when 't: comparison>() =
+                let comparison = parse {
+                    let! cmp = numberComparison()
+                    let! rhs = mkConst()
+                    return wrap <@ fun (lhs: 't) -> (%cmp) lhs %rhs @>
+                }
+
+                let inclusion = parse {
+                    let! cmp = inclusion()
+                    let! rhs = mkConst()
+                    return wrap <@ fun (lhs: 't) -> (%cmp) lhs %rhs @>
                 }
 
                 comparison <|> inclusion
@@ -92,29 +102,56 @@ and mkComparisonAux prop =
                                and 't :> ValueType
                                and 't : struct
                                and 't : comparison>() =
-                let lhs = Expr.cast<Nullable<'t>> prop
-                
                 let comparison = parse { 
                    let! cmp = nullableComparison()
                    let! rhs = mkConst()
-                   return <@ (%cmp) %lhs %rhs @> 
+                   return wrap <@ fun (lhs: Nullable<'t>) -> (%cmp) lhs %rhs @> 
                 }
 
                 let inclusion = parse {
                     let! cmp = inclusion()
                     let! rhs = mkConst()
-                    return <@ (%cmp) %lhs %rhs @>
+                    return wrap <@ fun (lhs: Nullable<'t>) -> (%cmp) lhs %rhs @>
                 }
 
                 comparison <|> inclusion
         }
     
-    | _ -> unsupported prop.Type
+    | _ -> unsupported typeof<'T>
 
-let mkLambdaUntyped ty =
-    parse { let! param = newParam ty
-            let var = Expr.Var param
-            let prop = mkPropChain var .>> followedBy eof
-            let cmp = mkComparison var |>> Expr.untyped
-            let! body = attempt prop <|> cmp
-            return Expr.Lambda(param, body) }
+and private cache : TypeCache = TypeCache()
+
+and mkComparison param =
+    mkLogicalChain ^ parse { 
+        let! prop = mkPropChain param
+        let shape = TypeShape.Create(prop.Type)
+        let! res = 
+            shape.Accept { new ITypeVisitor<_> with
+                override _.Visit<'t>() =
+                    mkLambda<'t>() |>> fun f -> <@ (%f) %(Expr.Cast prop) @>
+            }
+        return res
+    }
+
+and mkLogicalChain parser =
+    let mkOperation operator operand =
+        operator .>> spaces |> chainl1 (operand .>> spaces)
+    
+    let operand, operandRef = createParserForwardedToRef()
+
+    let operation = mkOperation OR (mkOperation AND operand)
+    let nestedOperation = parenthesize operation
+    let negation = NOT nestedOperation
+    
+    operandRef := choice [ negation; nestedOperation; parser ]
+    
+    operation |>> Expr.cleanup
+
+let mkLambdaUntyped ty = parse { 
+    let! param = newParam ty
+    let var = Expr.Var param
+    let prop = mkPropChain var .>> followedBy eof
+    let cmp = mkComparison var |>> Expr.untyped
+    let! body = attempt prop <|> cmp
+    return Expr.Lambda(param, body)
+}

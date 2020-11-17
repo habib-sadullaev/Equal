@@ -8,7 +8,7 @@ open Equal.Expression
 
 #nowarn "49"
 
-let parser = mkLambda<TestRecord -> bool> ()
+let parser = mkLambda<TestRecord>()
 
 let gatherParams (e: Expr) =
     let rec aux e acc =
@@ -34,14 +34,16 @@ let inline failedWith expected input =
 [<Tests>]
 let tests =
     testList "expression parser" [
-        "Parent.Parent.Int <> 4"  |> parsedInto <@ fun Param_0 -> Param_0.Parent.Parent.Int <> 4 @>
+        "Int = 3"                |> parsedInto <@ fun Param_0 -> Param_0.Int = 3 @>
+        "Parent.Int <> 4"        |> parsedInto <@ fun Param_0 -> Param_0.Parent.Int <> 4 @>
+        "Parent.Parent.Int = 5"  |> parsedInto <@ fun Param_0 -> Param_0.Parent.Parent.Int = 5 @>
         
-        "TestArray Any(Int = 5)" |> parsedInto <@ fun Param_0 -> Array.exists (fun Param_1 -> Param_1.Int = 5) Param_0.TestArray @>
-        "TestList Any(Int = 5)"  |> parsedInto <@ fun Param_0 -> List.exists (fun Param_1 -> Param_1.Int = 5) Param_0.TestList @>
+        "TestArray Any(Int = 6)" |> parsedInto <@ fun Param_0 -> Array.exists (fun Param_1 -> Param_1.Int = 6) Param_0.TestArray @>
+        "TestList Any(Int = 7)"  |> parsedInto <@ fun Param_0 -> List.exists (fun Param_1 -> Param_1.Int = 7) Param_0.TestList @>
         
-        "TestArray all(Int = 5)" |> parsedInto <@ fun Param_0 -> Array.forall (fun Param_1 -> Param_1.Int = 5) Param_0.TestArray @>
-        "TestList all(Int = 5)"  |> parsedInto <@ fun Param_0 -> List.forall (fun Param_1 -> Param_1.Int = 5) Param_0.TestList @>
+        "TestArray all(Int = 8)" |> parsedInto <@ fun Param_0 -> Array.forall (fun Param_1 -> Param_1.Int = 8) Param_0.TestArray @>
+        "TestList all(Int = 9)"  |> parsedInto <@ fun Param_0 -> List.forall (fun Param_1 -> Param_1.Int = 9) Param_0.TestList @>
         
-        "TestArray is empty"      |> parsedInto <@ fun Param_0 -> Array.isEmpty Param_0.TestArray @> 
-        "TestList is empty"       |> parsedInto <@ fun Param_0 -> List.isEmpty Param_0.TestList @> 
+        "TestArray is empty"     |> parsedInto <@ fun Param_0 -> Array.isEmpty Param_0.TestArray @> 
+        "TestList is empty"      |> parsedInto <@ fun Param_0 -> List.isEmpty Param_0.TestList @> 
     ]
