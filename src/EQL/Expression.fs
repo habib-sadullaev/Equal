@@ -20,7 +20,21 @@ let rec mkLambda<'T> () : Parser<Expr<'T>, State> =
     | _ -> unsupported typeof<'T>
 
 and mkComparison param =
-    mkPropChain param >>= mkComparisonAux |>> Expr.cleanup
+    mkPropChain param >>= mkComparisonAux 
+    |> mkLogicalChain
+    |>> Expr.cleanup
+
+and mkLogicalChain p =
+    let mkOperation operator operand =
+        operator .>> spaces |> chainl1 (operand .>> spaces)
+    
+    let operand, operandRef = createParserForwardedToRef()
+    
+    let operation = mkOperation OR (mkOperation AND operand)
+    
+    operandRef := parenthesize operation <|> p
+    
+    operation
 
 and mkComparisonAux prop =
     match TypeShape.Create prop.Type with

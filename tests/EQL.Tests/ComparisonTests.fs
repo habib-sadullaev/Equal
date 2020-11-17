@@ -42,7 +42,7 @@ let tests =
         "Parent.Int NOT IN (4, 9)"   |> parsedInto <@ not (Array.contains (%param).Parent.Int %(constExpr [| 4; 9 |])) @>
         "NullableFloat in (1, 2, 3)" |> parsedInto <@ Array.contains (%param).NullableFloat %(constExpr [| for x in 1. .. 3. -> Nullable x |]) @>
 
-        "HasValue = true"   |> failedWith { position = 10L; errors = [ "end of input" ] }
+        "HasValue = true"   |> failedWith { position = 10L; errors = [ "AND"; "OR"; "end of input" ] }
         "String = 'zzz'"    |> failedWith { position = 8L;  errors = [ "CONTAINS"; "ENDS WITH"; "STARTS WITH" ] }
         "Parent.Parent.Int" |> failedWith { position = 18L; errors = [ "<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN" ] }
         "NullableFloat"     |> failedWith { position = 14L; errors = [ "<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN" ] }

@@ -55,7 +55,8 @@ let private parse parser input =
               | ExpectedStringCI msg -> msg
               | NestedError (_, _, errs) -> yield! gatherErrs errs
               | _ -> ()
-            ]
+            ] |> List.distinct |> List.sort
+
         Result.Error { position = e.Position.Column; errors = gatherErrs e.Messages }
 
 let validInput parser input =

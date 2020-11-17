@@ -13,6 +13,7 @@
     <Compile Include="ConstantTests.fs" />
     <Compile Include="PropertyChainTests.fs" />
     <Compile Include="ComparisonTests.fs" />
+    <Compile Include="LogicalChainTests.fs" />
     <Compile Include="ExpressionTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
