@@ -3,8 +3,8 @@
 open FSharp.Quotations
 open Expecto
 open FParsec
-open EQL.Comparison
 open TypeShape.Core.StagingExtensions
+open EQL.Expression
 
 #nowarn "49"
 

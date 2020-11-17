@@ -1,4 +1,4 @@
-﻿module EQL.Comparison
+﻿module EQL.Expression
 
 open System
 open FSharp.Quotations

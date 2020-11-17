@@ -9,7 +9,7 @@
     <Compile Include="Constant.fs" />
     <Compile Include="PropertyChain.fs" />
     <Compile Include="Expr.fs" />
-    <Compile Include="Comparison.fs" />
+    <Compile Include="Expression.fs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="paket.references" />

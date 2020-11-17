@@ -3,7 +3,7 @@
 open FSharp.Quotations
 open Expecto
 open FParsec
-open EQL.Comparison
+open EQL.Expression
 
 let parser = mkComparison param
 
