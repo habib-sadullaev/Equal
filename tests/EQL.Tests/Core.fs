@@ -15,6 +15,7 @@ type TestRecord =
       Int: int
       String: string
       Float: float
+      NullableFloat: System.Nullable<float>
       Enum: TestEnum
       OptionalEnum: TestEnum option
       TestArray: TestRecord []
