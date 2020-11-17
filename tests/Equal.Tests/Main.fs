@@ -1,4 +1,4 @@
-﻿module EQL.Tests
+﻿module Equal.Tests
 open Expecto
 
 [<EntryPoint>]

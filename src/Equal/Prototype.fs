@@ -1,4 +1,4 @@
-﻿module EQL.Prototype
+﻿module Equal.Prototype
 open FParsec
 
 type Var = Param | Prop  of Var * string

@@ -5,7 +5,7 @@ open FSharp.Quotations
 open FSharp.Linq.NullableOperators
 open Expecto
 open FParsec
-open EQL.Expression
+open Equal.Expression
 
 let parser = mkComparison param
 

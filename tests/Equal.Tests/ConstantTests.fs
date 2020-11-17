@@ -3,7 +3,7 @@
 open System
 open FSharp.Quotations
 open Expecto
-open EQL.Constant
+open Equal.Constant
 
 let parser<'T> = mkConst<'T>()
 

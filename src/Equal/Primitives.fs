@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module EQL.Primitives
+module Equal.Primitives
 
 open System
 open FParsec

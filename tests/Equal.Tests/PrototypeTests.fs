@@ -2,7 +2,7 @@ module PrototypeTests
 
 open Expecto
 open FParsec
-open EQL.Prototype
+open Equal.Prototype
 
 let parse parser input =
     match run (parser .>> eof) input with

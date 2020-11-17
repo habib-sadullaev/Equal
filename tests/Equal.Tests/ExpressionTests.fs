@@ -4,7 +4,7 @@ open FSharp.Quotations
 open Expecto
 open FParsec
 open TypeShape.Core.StagingExtensions
-open EQL.Expression
+open Equal.Expression
 
 #nowarn "49"
 

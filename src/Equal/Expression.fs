@@ -1,12 +1,12 @@
-﻿module EQL.Expression
+﻿module Equal.Expression
 
 open System
 open FSharp.Quotations
 open FParsec
 open TypeShape.Core
 open TypeShape.Core.StagingExtensions
-open EQL.Constant
-open EQL.PropertyChain
+open Equal.Constant
+open Equal.PropertyChain
 
 let rec mkLambda<'T> () : Parser<Expr<'T>, State> =
     let shape = shapeof<'T>

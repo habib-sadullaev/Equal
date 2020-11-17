@@ -31,7 +31,7 @@
     <PackageReference Update="Mono.Cecil" Version="0.10.*" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\EQL\EQL.fsproj" />
+    <ProjectReference Include="..\..\src\Equal\Equal.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

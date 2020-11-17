@@ -1,4 +1,4 @@
-﻿module EQL.PropertyChain
+﻿module Equal.PropertyChain
 
 open FParsec
 open FSharp.Quotations

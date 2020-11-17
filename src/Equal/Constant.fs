@@ -1,4 +1,4 @@
-﻿module EQL.Constant
+﻿module Equal.Constant
 
 open System
 open FSharp.Quotations
