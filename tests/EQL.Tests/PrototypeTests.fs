@@ -32,7 +32,7 @@ let fail name parser =
         Expect.equal      actual.position pos "Parsing should fail with the proper position" 
     
     fun data ->
-        testList (sprintf "incorrect input.%s" name)
+        testList (sprintf "incorrect input/%s" name)
             [ yield! testFixture callback [ for item in data -> x <- x + 1; sprintf "case %i" x, item ] ]
 
 let bool input = parse comparison input
