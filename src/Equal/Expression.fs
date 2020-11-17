@@ -110,3 +110,11 @@ and mkComparisonAux prop =
         }
     
     | _ -> unsupported prop.Type
+
+let mkLambdaUntyped ty =
+    parse { let! param = newParam ty
+            let var = Expr.Var param
+            let prop = mkPropChain var .>> followedBy eof
+            let cmp = mkComparison var |>> Expr.untyped
+            let! body = attempt prop <|> cmp
+            return Expr.Lambda(param, body) }
