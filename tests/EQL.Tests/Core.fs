@@ -17,7 +17,8 @@ type TestRecord =
       Float: float
       Enum: TestEnum
       OptionalEnum: TestEnum option
-      TestArray: TestRecord [] }
+      TestArray: TestRecord []
+      TestList: TestRecord list }
 
 let testType = typeof<TestRecord>
 let x = Var("x", testType)

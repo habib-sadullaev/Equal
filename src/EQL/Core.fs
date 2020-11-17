@@ -22,11 +22,18 @@ let inline (<>) (x: 'T) (y: 'T) =
     else 
         x <> y
 
-type State = State
-type Parser<'T> = FParsec.Primitives.Parser<Expr<'T>, State>
-
-let state = State
-
 let unsupported (ty: Type) = fail ^ sprintf "unsupported type %A" ty
 
 let inline constExpr (x: 'a) = x |> Expr.Value |> Expr.Cast<'a>
+
+type State = int
+
+type Parser<'T> = FParsec.Primitives.Parser<Expr<'T>, State>
+
+let state : State = 0
+
+let newParam ty : Parser<_, State> =
+    parse { let! x = getUserState
+            let param = Var(sprintf "Param_%i" x, ty)
+            do! updateUserState ^ (+) 1
+            return param }
