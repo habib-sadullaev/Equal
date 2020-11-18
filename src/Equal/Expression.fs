@@ -9,6 +9,8 @@ open TypeShape.Core.StagingExtensions
 open Equal.Constant
 open Equal.PropertyChain
 
+let private cache = TypeCache()
+
 let rec mkLambda<'T> () : Parser<'T -> bool> =
     match cache.TryFind() with
     | Some v -> v
@@ -18,10 +20,10 @@ let rec mkLambda<'T> () : Parser<'T -> bool> =
         match ctx.InitOrGetCachedValue delay with
         | Cached(value = v) -> v
         | NotCached t ->
-            let v = mkLambdaAux<'T> ctx
+            let v = mkLambdaAux()
             ctx.Commit t v
 
-and private mkLambdaAux<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
+and private mkLambdaAux<'T> () : Parser<'T -> bool> =
     let wrap (e: Expr<'a -> bool>) = unbox<Expr<'T -> bool>> e
     match shapeof<'T> with
     | Shape.Bool -> preturn ^ wrap ^ <@ fun x -> x @>
@@ -83,30 +85,15 @@ and private mkLambdaAux<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
                 comparison <|> inclusion
         }
 
-    | Shape.NullableComparison s ->
-        s.Accept { new INullableComparisonVisitor<_> with
-            member _.Visit<'t when 't : (new : unit -> 't)
-                               and 't :> ValueType
-                               and 't : struct
-                               and 't : comparison>() =
-                let comparison = parse { 
-                   let! cmp = nullableComparison()
-                   let! rhs = mkConst()
-                   return wrap <@ fun (lhs: Nullable<'t>) -> (%cmp) lhs %rhs @> 
-                }
-
-                let inclusion = parse {
-                    let! cmp = inclusion()
-                    let! rhs = mkConst()
-                    return wrap <@ fun (lhs: Nullable<'t>) -> (%cmp) lhs %rhs @>
-                }
-
-                comparison <|> inclusion
+    | Shape.Nullable s ->
+        s.Accept { new INullableVisitor<_> with
+            member _.Visit<'t when 't : (new : unit -> 't) and 't :> ValueType and 't : struct>() = parse {
+                let! cmp = mkLambda<'t> ()
+                return wrap <@ fun (lhs: 't Nullable) -> lhs.HasValue && (%cmp) lhs.Value @>
+            }
         }
     
     | _ -> unsupported typeof<'T>
-
-and private cache : TypeCache = TypeCache()
 
 and mkComparison param =
     mkLogicalChain ^ parse { 

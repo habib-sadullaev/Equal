@@ -9,7 +9,6 @@
     <Compile Include="Constant.fs" />
     <Compile Include="PropertyChain.fs" />
     <Compile Include="Expr.fs" />
-    <Compile Include="CustomShapes.fs" />
     <Compile Include="Operators.fs" />
     <Compile Include="Expression.fs" />
   </ItemGroup>

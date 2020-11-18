@@ -3,7 +3,6 @@ module Operators
 
 open System
 open FSharp.Quotations
-open FSharp.Linq.NullableOperators
 open FParsec
 open TypeShape.Core.StagingExtensions
 
@@ -62,16 +61,6 @@ let existence =
             stringCIReturn "ANY" ^ Expr.lam2 exists
             stringCIReturn "ALL" ^ Expr.lam2 forall
         ] .>> spaces
-
-let nullableComparison () =
-    choice [
-        stringReturn "="  <@ (?=?)  @>
-        stringReturn "<>" <@ (?<>?) @>
-        stringReturn "<=" <@ (?<=?) @>
-        stringReturn "<"  <@ (?<?)  @>
-        stringReturn ">=" <@ (?>=?) @>
-        stringReturn ">"  <@ (?>?)  @>
-    ] .>> spaces
 
 let mkOperator name operator = stringCIReturn name operator .>> spaces
 

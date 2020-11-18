@@ -35,11 +35,11 @@ let tests =
         "Parent.Parent.Float<=5"   |> parsedInto <@ (%param).Parent.Parent.Float <= 5. @>
         "Parent.Parent.Enum  <  1" |> parsedInto <@ (%param).Parent.Parent.Enum < TestEnum.One @>
         "Parent.OptionalEnum=two"  |> parsedInto <@ (%param).Parent.OptionalEnum.IsSome && (%param).Parent.OptionalEnum.Value = TestEnum.Two @>
-        "NullableFloat = 1"        |> parsedInto <@ (%param).NullableFloat ?=? %(constExpr ^ Nullable 1.) @>
+        "NullableFloat = 1"        |> parsedInto <@ (%param).NullableFloat.HasValue && (%param).NullableFloat.Value = 1. @>
 
         "Parent.Int in (4, 9)"       |> parsedInto <@ Array.contains (%param).Parent.Int %(constExpr [| 4; 9 |]) @>
         "Parent.Int NOT IN (4, 9)"   |> parsedInto <@ not (Array.contains (%param).Parent.Int %(constExpr [| 4; 9 |])) @>
-        "NullableFloat in (1, 2, 3)" |> parsedInto <@ Array.contains (%param).NullableFloat %(constExpr [| for x in 1. .. 3. -> Nullable x |]) @>
+        "NullableFloat in (1, 2, 3)" |> parsedInto <@ (%param).NullableFloat.HasValue && Array.contains (%param).NullableFloat.Value %(constExpr [| 1. .. 3. |]) @>
         "OptionalEnum in (1, 2, 3)"  |> parsedInto <@ (%param).OptionalEnum.IsSome && Array.contains (%param).OptionalEnum.Value %(constExpr [| TestEnum.One; TestEnum.Two; byteEnum 3uy |]) @>
 
         "Children IS EMPTY" |> parsedInto <@ (%param).Children.IsSome && List.isEmpty (%param).Children.Value @>
