@@ -1,7 +1,6 @@
 ﻿module Equal.Constant
 
 open System
-open FSharp.Quotations
 open FParsec
 open TypeShape.Core
 open TypeShape.Core.Utils
@@ -88,4 +87,3 @@ and private mkConstAux<'T> (ctx: TypeGenerationContext) : Parser<'T, State> =
     | x -> unsupported x.Type
 
 and private cache : TypeCache = TypeCache()
-
