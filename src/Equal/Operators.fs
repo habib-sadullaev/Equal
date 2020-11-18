@@ -30,7 +30,7 @@ let inclusion () =
         stringCIReturn "NOT IN" <@ fun x y -> not (Array.contains x y) @>
     ] .>> spaces
 
-let (|Array|List|Seq|) (ty: Type) =
+let private (|Array|List|Seq|) (ty: Type) =
     if ty.IsArray then Array
     else if ty = typedefof<_ list> then List
     else Seq

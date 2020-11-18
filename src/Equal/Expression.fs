@@ -17,7 +17,7 @@ let rec mkLambda<'T> () : Parser<'T -> bool> =
         mkLambdaCached<'T> ctx
 
 and private mkLambdaCached<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
-    let delay (c: Cell<Parser<'T -> bool>>) = parse.Delay ^ fun () -> c.Value
+    let delay (c: Cell<Parser<'T -> bool>>) = parse { return! c.Value }
     match ctx.InitOrGetCachedValue delay with
     | Cached(value = v) -> v
     | NotCached t ->
@@ -125,12 +125,10 @@ and mkComparison param =
     mkLogicalChain ^ parse { 
         let! prop = mkPropChain param
         let shape = TypeShape.Create(prop.Type)
-        let! res = 
-            shape.Accept { new ITypeVisitor<_> with
-                override _.Visit<'t>() =
-                    mkLambda<'t>() |>> fun f -> <@ (%f) %(Expr.Cast prop) @>
-            }
-        return res
+        return! shape.Accept { new ITypeVisitor<_> with
+            override _.Visit<'t>() = 
+                mkLambda<'t>() |>> fun f -> <@ (%f) %(Expr.Cast prop) @>
+        }
     }
 
 and mkLogicalChain parser =
