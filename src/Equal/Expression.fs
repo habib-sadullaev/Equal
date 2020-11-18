@@ -14,15 +14,12 @@ let rec mkLambda<'T> () : Parser<'T -> bool> =
     | Some v -> v
     | None ->
         use ctx = cache.CreateGenerationContext()
-        mkLambdaCached<'T> ctx
-
-and private mkLambdaCached<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
-    let delay (c: Cell<Parser<'T -> bool>>) = parse { return! c.Value }
-    match ctx.InitOrGetCachedValue delay with
-    | Cached(value = v) -> v
-    | NotCached t ->
-        let v = mkLambdaAux<'T> ctx
-        ctx.Commit t v
+        let delay (c: Cell<Parser<'T -> bool>>) = parse { return! c.Value }
+        match ctx.InitOrGetCachedValue delay with
+        | Cached(value = v) -> v
+        | NotCached t ->
+            let v = mkLambdaAux<'T> ctx
+            ctx.Commit t v
 
 and private mkLambdaAux<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
     let wrap (e: Expr<'a -> bool>) = unbox<Expr<'T -> bool>> e
@@ -52,23 +49,13 @@ and private mkLambdaAux<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
                 emptiness <|> existence
         }
     
-    | Shape.FSharpOption _ & Shape.Comparison s ->
-        s.Accept { new IComparisonVisitor<_> with
-            member _.Visit<'t when 't: comparison>() =
-                let comparison = parse {
-                    let! cmp = numberComparison()
-                    let! rhs = mkConst()
-                    return wrap <@ fun (lhs: 't) -> (%cmp) lhs %rhs @>
-                }
-
-                let inclusion = parse {
-                    let! cmp = inclusion()
-                    let! rhs = mkConst()
-                    return wrap <@ fun (lhs: 't) -> (%cmp) lhs %rhs @>
-                }
-
-                comparison <|> inclusion
+    | Shape.FSharpOption s ->
+        s.Element.Accept { new ITypeVisitor<_> with
+            member _.Visit<'t>() = parse {
+                let! cmp = mkLambda<'t> ()
+                return wrap <@ fun (lhs: 't option) -> lhs.IsSome && (%cmp) lhs.Value @>
             }
+        }
 
     | Shape.Poco _ ->
             parse { 

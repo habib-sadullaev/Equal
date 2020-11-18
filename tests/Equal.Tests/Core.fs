@@ -14,6 +14,7 @@ type TestRecord =
       HasValue: bool
       Int: int
       String: string
+      OptionalString: string option
       Float: float
       NullableFloat: System.Nullable<float>
       Enum: TestEnum
@@ -74,7 +75,7 @@ let failed parser expected input =
     Expect.equal pos expected.position
         ^ sprintf "incorrect error position\nexpected: '%d'\n  actual: '%d'" expected.position pos
     Expect.equal errs expected.errors
-        ^ sprintf "Incorrect error message\nexpected:\n%A\n  actual:\n%A" errs expected.errors
+        ^ sprintf "Incorrect error message\nexpected:\n%A\n  actual:\n%A" expected.errors errs
 
 let parsed parser expected input =
     let actual = validInput parser input
