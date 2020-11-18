@@ -29,10 +29,9 @@ and private mkLambdaAux<'T> () : Parser<'T -> bool> =
     | Shape.Bool -> preturn ^ wrap ^ <@ fun x -> x @>
 
     | Shape.String ->
-        parse { 
-            let! cmp = stringComparison()
-            let! rhs = mkConst()
-            return wrap <@ fun lhs -> (%cmp) lhs %rhs @> }
+        parse { let! cmp = stringComparison()
+                let! rhs = mkConst()
+                return wrap <@ fun lhs -> (%cmp) lhs %rhs @> }
     
     | Shape.Enumerable s ->
         s.Accept { new IEnumerableVisitor<_> with
@@ -58,14 +57,14 @@ and private mkLambdaAux<'T> () : Parser<'T -> bool> =
                 return wrap <@ fun (lhs: 't option) -> lhs.IsSome && (%cmp) lhs.Value @>
             }
         }
-
+    
     | Shape.Poco _ ->
-            parse { 
-                let! param = newParam typeof<'T>
-                let! body = mkComparison ^ Expr.Var param
+        parse { 
+            let! param = newParam typeof<'T>
+            let! body = mkComparison ^ Expr.Var param
 
-                return Expr.Lambda(param, body) |> Expr.cast<'T -> bool>
-            }
+            return Expr.Lambda(param, body) |> Expr.cast<'T -> bool>
+        }
 
     | Shape.Comparison s ->
         s.Accept { new IComparisonVisitor<_> with
@@ -121,9 +120,12 @@ and mkLogicalChain parser =
 
 let mkLambdaUntyped ty = parse { 
     let! param = newParam ty
-    let var = Expr.Var param
+
+    let var  = Expr.Var param
     let prop = mkPropChain var .>> followedBy eof
-    let cmp = mkComparison var |>> Expr.untyped
+    let cmp  = mkComparison var |>> Expr.untyped
+    
     let! body = attempt prop <|> cmp
+    
     return Expr.Lambda(param, body)
 }
