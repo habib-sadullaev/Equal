@@ -5,7 +5,7 @@ framework: net462, netstandard2.0, netstandard2.1, netcoreapp3.1
 
 nuget FSharp.Core ~> 4.3 >= 4.3.4
 nuget FParsec >= 1.1.1
-nuget TypeShape ~> 8.0.1
+nuget TypeShape >= 8.0.1
 
 group netcore
   source https://api.nuget.org/v3/index.json
