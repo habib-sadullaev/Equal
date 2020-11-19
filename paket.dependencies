@@ -13,8 +13,6 @@ group netcore
   condition: netcore
   framework: netcoreapp3.1
 
-  nuget FSharp.Core
-  nuget FParsec
   nuget Expecto
   nuget Microsoft.Net.Test.SDK
   nuget YoloDev.Expecto.TestSdk
@@ -25,8 +23,6 @@ group netfx
   condition: netfx
   framework: net462
 
-  nuget FSharp.Core
-  nuget FParsec
   nuget Expecto == 8.9.1
   nuget Microsoft.Net.Test.SDK
   nuget Expecto.VisualStudio.TestAdapter 10.0.2
