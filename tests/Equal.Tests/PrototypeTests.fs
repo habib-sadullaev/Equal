@@ -29,10 +29,13 @@ let error parser input =
 
         { position = e.Position.Column; errors = gatherErrs e.Messages }
 
-type TestInfo<'a> = 
-    { name: string; input: string; parser: Parser<'a, unit> }
+type TestInfo<'a when 'a : equality> = 
+    { name: string
+      input: string
+      parser: Parser<'a, unit> }
     
-    static member inline Expect({ name = name; input = input; parser = parser }, expected) =
+    member inline this.Expect(expected) =
+        let { name = name; input = input; parser = parser } = this
         let testName = 
             sprintf "'%s' parsed with '%s parser'" input name
             |> String.map ^ function '.' -> '_' | sym -> sym
@@ -44,7 +47,8 @@ type TestInfo<'a> =
                 ^ sprintf "Incorrect error message\nexpected:\n%A\nactual:\n%A" expected.errors errs
         } |> testLabel "invalid input"
 
-    static member inline Expect({ name = name; input = input; parser = parser }, expected) =
+    member inline this.Expect(expected) =
+        let { name = name; input = input; parser = parser } = this
         let testName =
             sprintf "'%s' parsed with '%s parser'" input name
             |> String.map ^ function '.' -> '_' | sym -> sym
@@ -54,9 +58,8 @@ type TestInfo<'a> =
         } |> testLabel "valid input"
 
 let inline expects expected testInfo =
-    let inline map (var: ^a) (stub: 't) =
-        ((^t or ^a) : (static member Expect : ^t * ^a -> ^r) (stub, var))
-    map expected ^ testInfo
+    let inline resolve (stub: ^t) (res: ^a) = (^t : (member Expect : ^a -> Test) (stub, res))
+    resolve testInfo expected
 
 let operandParser    = operand,    nameof(operand)
 let listParser       = list,       nameof(list)

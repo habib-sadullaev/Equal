@@ -134,8 +134,9 @@ do predicateRef :=
     let operand, operandRef = createParserForwardedToRef()
 
     let operation = op "OR" Or (op "AND" And operand)
-    let negate = skipStringCI "NOT" >>. parenthesize operation |>> Not
+    let nestedOperation = parenthesize operation
+    let negation = skipStringCI "NOT" >>. nestedOperation |>> Not
 
-    operandRef := choice [ negate; comparison; parenthesize operation ]
+    operandRef := choice [ negation; comparison; nestedOperation ]
 
     operation
