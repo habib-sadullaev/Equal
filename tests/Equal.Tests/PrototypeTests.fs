@@ -4,172 +4,128 @@ open Expecto
 open FParsec
 open Equal.Prototype
 
-let parse parser input =
+#nowarn "86"
+
+type FailInfo = { position: int64; errors: string list }
+
+let ok parser input =
     match run (parser .>> eof) input with
-    | Success (v, _, _) -> v
-    | Failure (e, _, _) -> failwith e
+    | Success(v, _, _) -> v
+    | Failure(e, _, _) -> failtest e
 
-let pass name parser =
-    let mutable x = 0
-    let callback (input, expected) () =
-        let actual = parse parser input
-        Expect.equal actual expected "They should be equal"
+let error parser input =
+    match run (parser .>> eof) input with
+    | Success(v, _, _) -> failtestf "%A" v
+    | Failure(_, e, _) -> 
+        let rec gatherErrs errs = 
+            [ for err in errs |> ErrorMessageList.ToSortedArray do
+              match err with
+              | Expected msg 
+              | ExpectedString msg 
+              | ExpectedStringCI msg -> msg
+              | NestedError (_, _, errs) -> yield! gatherErrs errs
+              | _ -> ()
+            ] |> List.distinct |> List.sort
+
+        { position = e.Position.Column; errors = gatherErrs e.Messages }
+
+type TestInfo<'a> = 
+    { name: string; input: string; parser: Parser<'a, unit> }
     
-    fun data -> 
-        testList name [ yield! testFixture callback [ for item in data -> x <- x + 1; sprintf "case %i" x, item ] ]
+    static member inline Expect({ name = name; input = input; parser = parser }, expected) =
+        let testName = 
+            sprintf "'%s' parsed with '%s parser'" input name
+            |> String.map ^ function '.' -> '_' | sym -> sym
+        test testName {
+            let { position = pos; errors = errs } = error parser input
+            Expect.equal pos expected.position
+                ^ sprintf "incorrect error position\nexpected: '%d'\n  actual: '%d'" expected.position pos
+            Expect.equal errs expected.errors
+                ^ sprintf "Incorrect error message\nexpected:\n%A\nactual:\n%A" expected.errors errs
+        } |> testLabel "invalid input"
 
-type ExpectedFailInfo = { position: int64; message: string }
+    static member inline Expect({ name = name; input = input; parser = parser }, expected) =
+        let testName =
+            sprintf "'%s' parsed with '%s parser'" input name
+            |> String.map ^ function '.' -> '_' | sym -> sym
+        test testName {
+            let actual = ok parser input
+            Expect.equal actual expected ^ sprintf "expected:\n%A\n  actual:\n%A\n" expected actual
+        } |> testLabel "valid input"
 
-let fail name parser =
-    let mutable x = 0
-    let parse parser input =
-        match run (parser .>> eof) input with
-        | Success (_, _, _) -> failwith "The test should fail"
-        | Failure (s, e, _) -> { position = e.Position.Column; message = s.Trim() }
-    let callback (input, { position = pos; message = msg}) () =
-        let actual = parse parser input
-        Expect.stringEnds actual.message  msg "Parsing should fail with the proper message" 
-        Expect.equal      actual.position pos "Parsing should fail with the proper position" 
-    
-    fun data ->
-        testList (sprintf "incorrect input/%s" name)
-            [ yield! testFixture callback [ for item in data -> x <- x + 1; sprintf "case %i" x, item ] ]
+let inline expects expected testInfo =
+    let inline map (var: ^a) (stub: 't) =
+        ((^t or ^a) : (static member Expect : ^t * ^a -> ^r) (stub, var))
+    map expected ^ testInfo
 
-let bool input = parse comparison input
-let (.&&.) a b = And(a, b)
-let (.||.) a b = Or(a, b)
+let operandParser    = operand,    nameof(operand)
+let listParser       = list,       nameof(list)
+let comparisonParser = comparison, nameof(comparison)
+let predicateParser  = predicate,  nameof(predicate)
 
-[<RequireQualifiedAccess>]
-module ExpectedOperators = 
-    let [<Literal>] comparisonLevel =
-        """Expecting: end of input, '!=', '.', '<', '<=', '<>', '=', '>', '>=', 'ALL'
-(case-insensitive), 'ANY' (case-insensitive), 'CONTAINS' (case-insensitive),
-'ENDS WITH' (case-insensitive), 'IN' (case-insensitive), 'NOT IN'
-(case-insensitive) or 'STARTS WITH' (case-insensitive)"""
+let whenParsing input (parser, name) = { name = name; input = input; parser = parser }
+let bool input = ok comparison input
 
-    let [<Literal>] predicateLevel =
-        """Expecting: end of input, '!=', '.', '<', '<=', '<>', '=', '>', '>=', 'ALL'
-(case-insensitive), 'AND' (case-insensitive), 'ANY' (case-insensitive),
-'CONTAINS' (case-insensitive), 'ENDS WITH' (case-insensitive), 'IN'
-(case-insensitive), 'NOT IN' (case-insensitive), 'OR' (case-insensitive) or
-'STARTS WITH' (case-insensitive)"""
-        
+let private (&&) a b = And(a, b)
+let private (||) a b = Or(a, b)
 
 [<Tests>]
-let operandtests =
-    testList "prototype tests" [
-        pass "operand" operand 
-            [ 
-                "A",            Var(Prop(Param, "A"))
-                "A.B",          Var(Prop(Prop(Param,  "A"), "B"))
-                "A.B.C ",       Var(Prop(Prop(Prop(Param, "A"), "B"), "C"))
-                "'5 o''clock'", Const "5 o'clock"
-            ] 
-
-        pass "list" list
-            [
-                "('a' , 'b', 'c' ,'d','e' )", [ for i = 0 to 4 do string ('a' + char i) ] 
-            ]
-
-        pass "comparison" comparison
-            [
-                "A.B.C < '5'",  Comparison(LessThan, parse var "A.B.C", parse operand "'5'")
-                "A.B.C <= '5'", Comparison(LessThanOrEqual, parse var "A.B.C", parse operand "'5'")
-                "A.B.C = '5'",  Comparison(Equal, parse var "A.B.C", parse operand "'5'")
-                "A",            Comparison(Equal, parse var "A", Const "true")
+let tests =
+    testList "prototype parser" [
+        operandParser |> whenParsing "A"               |> expects ^ Var(Prop(Param, "A"))
+        operandParser |> whenParsing "A.B"             |> expects ^ Var(Prop(Prop(Param,  "A"), "B"))
+        operandParser |> whenParsing "A.B.C "          |> expects ^ Var(Prop(Prop(Prop(Param, "A"), "B"), "C"))
+        operandParser |> whenParsing "'5 o''clock'"    |> expects ^ Const "5 o'clock"
+        
+        listParser |> whenParsing "( 'a' , 'b', 'c' )" |> expects [for i = 0 to 2 do string ('a' + char i)]
+        
+        comparisonParser |> whenParsing "A.B.C < '5'"  |> expects ^ Comparison(LessThan, ok var "A.B.C", ok operand "'5'")
+        comparisonParser |> whenParsing "A.B.C <= '5'" |> expects ^ Comparison(LessThanOrEqual, ok var "A.B.C", ok operand "'5'")
+        comparisonParser |> whenParsing "A.B.C = '5'"  |> expects ^ Comparison(Equal, ok var "A.B.C", ok operand "'5'")
+        comparisonParser |> whenParsing "A"            |> expects ^ Comparison(Equal, ok var "A", Const "true")
               
-                "A.B.C Contains 'aaa'", StringComparison(Contains, parse var "A.B.C", "aaa")
-              
-                "A.B.C IN ('aaa','bbb')",     In(parse var "A.B.C", parse list "('aaa', 'bbb')")
-                "A.B.C NOT IN ('aaa','bbb')", Not(In(parse var "A.B.C", parse list "('aaa', 'bbb')"))
-              
-                "A ANY (    )",
-                    Any(parse var "A", None)
-
-                "A   ANY  (  B = '7/29/2020 11:44:00'   OR   C  )", 
-                    Any(parse var "A", Some(parse predicate "B = '7/29/2020 11:44:00' or C"))
-            ]
-
-        pass "predicate" predicate
-            [
-                "A AND B OR C AND D",     bool "A" .&&. bool "B" .||. (bool "C" .&&. bool "D")
-                "A OR B AND C OR D",      bool "A" .||. (bool "B" .&&. bool "C") .||. bool "D" 
-                "(A OR B) AND C OR D",    bool "A" .||. bool "B" .&&. bool "C" .||. bool "D"
-                "A.B = '19' AND B = '6'", bool "A.B = '19'" .&&. bool "B = '6'"
-                "NOT(A OR B) AND C OR D", Not(bool "A" .||. bool "B") .&&. bool "C" .||. bool "D"
+        comparisonParser |> whenParsing "B contains 'a'"         |> expects ^ StringComparison(Contains, ok var "B", "a")
+        comparisonParser |> whenParsing "C IN ('aaa','bbb')"     |> expects ^ In(ok var "C", ok list "('aaa', 'bbb')")
+        comparisonParser |> whenParsing "C NOT IN ('aaa','bbb')" |> expects ^ Not(In(ok var "C", ok list "('aaa', 'bbb')"))
+        comparisonParser |> whenParsing "A ANY (    )"           |> expects ^ Any(ok var "A", None)
+        comparisonParser |> whenParsing "A ANY (B='10' OR C)"    |> expects ^ Any(ok var "A", Some(ok predicate "B = '10' or C"))
+        
+        predicateParser |> whenParsing "A AND B OR C AND D"     |> expects (bool "A" && bool "B" || bool "C" && bool "D")
+        predicateParser |> whenParsing "A OR B AND C OR D"      |> expects (bool "A" || bool "B" && bool "C" || bool "D")
+        predicateParser |> whenParsing "(A OR B) AND C OR D"    |> expects ((bool "A" || bool "B") && bool "C" || bool "D")
+        predicateParser |> whenParsing "A.B = '19' AND B = '6'" |> expects (bool "A.B = '19'" && bool "B = '6'")
+        predicateParser |> whenParsing "NOT(A OR B) AND C OR D" |> expects (Not(bool "A" || bool "B") && bool "C" || bool "D")
             
-                "(A.B = '19' AND B = '6') or C Starts with '6'", 
-                    bool "A.B = '19'" .&&. bool "B = '6'" .||. bool "C Starts with '6'"
-            
-                "(A.B = '19' AND B = '6') or C Starts with '6' or C", 
-                    bool "A.B = '19'" .&&. bool "B = '6'" .||. bool "C Starts with '6'" .||. bool "C"
-            
-                "A.B = '19' AND B = '6' or C Starts with '6' or C",
-                    bool "A.B = '19'" .&&. bool "B = '6'" .||. bool "C Starts with '6'" .||. bool "C"
-            
-                "(A OR B) AND C OR D AND E ANY()",
-                    bool "A" .||. bool "B" .&&. bool "C" .||. (bool "D" .&&. Any(parse var "E", None))
-                
-                "(X AND (Y AND (Z AND ((A AND B) AND C))))",
-                    bool "X" .&&. (bool "Y" .&&. (bool "Z" .&&. (bool "A" .&&. bool "B" .&&. bool "C")))
-            
-                "(X OR (Y OR (Z OR ((A OR B) OR C))))",
-                    bool "X" .||. (bool "Y" .||. (bool "Z" .||. (bool "A" .||. bool "B" .||. bool "C")))
+        predicateParser |> whenParsing "B = '6' or C CONTAINS '6'" |> expects (bool "B = '6'" || bool "C contains '6'")
+        predicateParser |> whenParsing "C STARTS WITH '6' or D"    |> expects (bool "C starts with '6'" || bool "D")
+        predicateParser |> whenParsing "(A OR B) AND C OR D ANY()" |> expects ((bool "A" || bool "B") && bool "C" || Any(ok var "D", None))
+        predicateParser |> whenParsing "X AND (Y AND Z) AND A"     |> expects (bool "X" && (bool "Y" && bool "Z") && bool "A")
+        predicateParser |> whenParsing "X ANY(A AND B or C)"       |> expects (Any(ok var "X", Some(bool "A" && bool "B" || bool "C")))
+        predicateParser |> whenParsing "X OR (Y OR Z) OR A"        |> expects (bool "X" || (bool "Y" || bool "Z") || bool "A")
+        predicateParser |> whenParsing "X ANY() or Y IN('1', '2')" |> expects (Any(ok var "X", None) || In(ok var "Y", ["1"; "2"]))
+        predicateParser |> whenParsing "(A ANY(B ANY(C ANY())))"   |> expects (Any(ok var "A", Some(Any(ok var "B", Some(Any(ok var "C", None))))))
+        
+        operandParser |> whenParsing ""         |> expects { position = 1L; errors = ["'"; "property"] }
+        operandParser |> whenParsing "(A).B"    |> expects { position = 1L; errors = ["'"; "property"] }
+        operandParser |> whenParsing "A.B. "    |> expects { position = 5L; errors = ["property"] }
+        operandParser |> whenParsing "A.B."     |> expects { position = 5L; errors = ["property"] }
+        operandParser |> whenParsing "A.B || C" |> expects { position = 5L; errors = ["."; "end of input"] }
 
-                "(A OR B) AND C OR D AND E ANY(F OR G AND H)",
-                    bool "A" .||. bool "B" .&&. bool "C" .||. 
-                        (bool "D" .&&. 
-                            Any(parse var "E", 
-                                 Some(bool "F" .||. (bool "G" .&&. bool "H"))))
-            
-                "A ANY ()", Any(parse var "A", None)
+        comparisonParser |> whenParsing "A starts with"  |> expects { position = 14L; errors = ["'"] }
+        comparisonParser |> whenParsing "'a' <> "        |> expects { position =  8L; errors = ["property"] }
+        comparisonParser |> whenParsing "A.B.C <= "      |> expects { position = 10L; errors = ["'"; "property"] }
+        comparisonParser |> whenParsing ""               |> expects { position =  1L; errors = ["'"; "property"] }
+        comparisonParser |> whenParsing "'a'"            |> expects { position =  4L; errors = ["!=";  "<"; "<="; "<>"; "="; ">"; ">="] }
+        comparisonParser |> whenParsing "A || 'B'"       |> expects { position =  3L; errors = 
+            [ "!="; "."; "<"; "<="; "<>"; "="; ">"; ">="; "ALL"; "ANY"; "CONTAINS"; 
+              "ENDS WITH"; "IN"; "NOT IN"; "STARTS WITH"; "end of input" ] }
 
-                "A ANY (B = '7/29/2020 11:44:00' OR C)", 
-                    Any(parse var "A",
-                        Some(parse predicate "B = '7/29/2020 11:44:00' OR C"))
-
-                "X ANY(A AND B or C and D) or Y IN('1', '2', '3')",
-                    Or
-                        (Any(parse var "X", Some(bool "A" .&&. bool "B" .||. (bool "C" .&&. bool "D"))),
-                         In(parse var "Y", List.map string [1..3]))
-
-                "(NOT(A ANY(B ANY(C ANY()))))",
-                    Not(Any(parse var "A", 
-                            Some(Any(parse var "B", 
-                                     Some(Any(parse var "C", None))))))
-            ]
-
-        fail "operand" operand
-            [
-                "",         { position = 1L; message = "Expecting: property or '\\''" }
-                "(A).B",    { position = 1L; message = "Expecting: property or '\\''" }
-                "A.B. ",    { position = 5L; message = "Expecting: property" }
-                "A.B.",     { position = 5L; message = "Expecting: property" }
-
-                "A.B || C", { position = 5L; message = "Expecting: end of input or '.'"}
-            ]
-
-        fail "comparison" comparison
-            [
-                "A.B.C Starts wItH", { position = 18L; message = "Expecting: '\\''" }
-                "'a' <> ",           { position = 8L;  message = "Expecting: property" }
-                "A.B.C <= ",         { position = 10L; message = "Expecting: property or '\\''" }
-                
-                "",                  { position = 1L;  message = "Expecting: property or '\\''" }
-                "'a'",               { position = 4L;  message = "Expecting: '!=', '<', '<=', '<>', '=', '>' or '>='" }
-                
-                "A || 'B'",          { position = 3L; message  = ExpectedOperators.comparisonLevel }
-            ]
-
-        fail "predicate" predicate
-            [
-                "NOT A OR B",         { position = 4L;  message = "Expecting: '('" }
-                "A.B.C IN 'aaa'",     { position = 10L; message = "Expecting: '('" }
-                "A.B.C contains aaa", { position = 16L; message = "Expecting: '\\''" }
-                
-                "'a'",                { position = 4L;  message =  "Expecting: '!=', '<', '<=', '<>', '=', '>' or '>='" }
-                "",                   { position = 1L; message =  "Expecting: property, '\\'', '(' or 'NOT' (case-insensitive)" }
-
-                "A || B",             { position = 3L; message  = ExpectedOperators.predicateLevel }
-            ]
-  ]
+        predicateParser |> whenParsing "NOT A OR B"     |> expects { position = 4L;  errors = ["("] }
+        predicateParser |> whenParsing "A.B.C IN 'aaa'" |> expects { position = 10L; errors = ["("] }
+        predicateParser |> whenParsing "A contains aaa" |> expects { position = 12L; errors = ["'"] }
+        predicateParser |> whenParsing "'a'"            |> expects { position = 4L;  errors = ["!=";  "<"; "<="; "<>"; "="; ">"; ">="] }
+        predicateParser |> whenParsing ""               |> expects { position = 1L;  errors = ["'"; "("; "NOT"; "property"] }
+        predicateParser |> whenParsing  "A || B"        |> expects { position = 3L;  errors = 
+            [ "!="; "."; "<"; "<="; "<>"; "="; ">"; ">="; "ALL"; "AND"; "ANY"; "CONTAINS";
+              "ENDS WITH"; "IN"; "NOT IN"; "OR"; "STARTS WITH"; "end of input" ] }
+    ]
