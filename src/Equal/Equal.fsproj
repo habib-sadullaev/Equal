@@ -4,10 +4,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Prototype.fs" />
+    <Compile Include="ParserCombinator.fs" />
     <Compile Include="Core.fs" />
     <Compile Include="Primitives.fs" />
     <Compile Include="Constant.fs" />
-    <Compile Include="PropertyChain.fs" />
     <Compile Include="Expr.fs" />
     <Compile Include="Operators.fs" />
     <Compile Include="Expression.fs" />

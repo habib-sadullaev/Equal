@@ -29,17 +29,17 @@ let pdecimal<'u> : Parser<decimal, 'u> =
 
 let private toConst (parserFunc: string -> bool * 'a) (p: Parser<string, 'u>) : Parser<'a, 'u> =
     let err = fun _ -> Reply(Error, expected typeof<'a>.Name)
-    fun (s: CharStream<'u>) ->
-        let initState = s.State
-        let v = p s
+    fun stream ->
+        let initState = stream.State
+        let v = p stream
         match v.Status with
         | Ok ->
             match parserFunc v.Result with
             | true, res ->
                 Reply res
             | false, _ ->
-                s.BacktrackTo initState
-                err s
+                stream.BacktrackTo initState
+                err stream
         | err -> Reply(err, v.Error)
 
 let private pconst tryParse : Parser<'a, 'u> = literal |> toConst tryParse

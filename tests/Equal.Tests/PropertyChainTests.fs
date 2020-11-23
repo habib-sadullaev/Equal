@@ -2,7 +2,7 @@
 
 open FSharp.Quotations
 open Expecto
-open Equal.PropertyChain
+open Equal.Expression
 open FParsec
 
 // replaces IL's prop 'virtual call's with 'call's

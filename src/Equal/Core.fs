@@ -11,16 +11,12 @@ open FParsec
 let (^) f x = f x
 
 let inline (=) (x: 'T) (y: 'T) =
-    if Type.(=)(typeof<'T>, typeof<Type>) then
-        Type.(=)((# "" x : Type #), (# "" y : Type #))
-    else 
-        x = y
+    if Type.(<>)(typeof<'T>, typeof<Type>) then x = y else
+    Type.(=)((# "" x : Type #), (# "" y : Type #))
 
 let inline (<>) (x: 'T) (y: 'T) =
-    if Type.(=)(typeof<'T>, typeof<Type>) then
-        Type.(<>)((# "" x : Type #), (# "" y : Type #))
-    else 
-        x <> y
+    if Type.(<>)(typeof<'T>, typeof<Type>) then x <> y else
+    Type.(<>)((# "" x : Type #), (# "" y : Type #))
 
 let unsupported (ty: Type) = fail ^ sprintf "unsupported type %A" ty
 

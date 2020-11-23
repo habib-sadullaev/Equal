@@ -16,7 +16,7 @@ let rec mkConst<'T> () : Parser<'T> =
     res |>> constExpr
 
 and private mkConstCached<'T> (ctx: TypeGenerationContext) : Parser<'T, State> =
-    let delay (c: Cell<Parser<'T, State>>) = parse { return! c.Value }
+    let delay (c: Cell<Parser<'T, State>>) s = c.Value s
     match ctx.InitOrGetCachedValue(delay) with
     | Cached(value = v) -> v
     | NotCached t ->
@@ -84,6 +84,6 @@ and private mkConstAux<'T> (ctx: TypeGenerationContext) : Parser<'T, State> =
                 mkConstCached<'t list> ctx |>> wrapWith ^ fun vs -> seq { for v in vs -> v }
         }
 
-    | x -> unsupported x.Type
+    | _ -> unsupported typeof<'T>
 
 and private cache : TypeCache = TypeCache()

@@ -7,7 +7,6 @@ open TypeShape.Core
 open TypeShape.Core.Utils
 open TypeShape.Core.StagingExtensions
 open Equal.Constant
-open Equal.PropertyChain
 
 let private cache = TypeCache()
 
@@ -16,21 +15,24 @@ let rec mkLambda<'T> () : Parser<'T -> bool> =
     | Some v -> v
     | None ->
         use ctx = cache.CreateGenerationContext()
-        let delay (c: Cell<Parser<'T -> bool>>) = parse { return! c.Value }
+        mkLambdaCached ctx
+
+and mkLambdaCached<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
+        let delay (c: Cell<Parser<'T -> bool>>) s = c.Value s
         match ctx.InitOrGetCachedValue delay with
         | Cached(value = v) -> v
         | NotCached t ->
-            let v = mkLambdaAux()
+            let v = mkLambdaAux ctx
             ctx.Commit t v
 
-and private mkLambdaAux<'T> () : Parser<'T -> bool> =
+and private mkLambdaAux<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
     let wrap (e: Expr<'a -> bool>) = unbox<Expr<'T -> bool>> e
     match shapeof<'T> with
-    | Shape.Bool -> preturn ^ wrap ^ <@ fun x -> x @>
+    | Shape.Bool -> preturn ^ wrap <@ fun x -> x @>
 
     | Shape.String ->
         parse { let! cmp = stringComparison()
-                let! rhs = mkConst()
+                and! rhs = mkConst()
                 return wrap <@ fun lhs -> (%cmp) lhs %rhs @> }
     
     | Shape.Enumerable s ->
@@ -43,7 +45,7 @@ and private mkLambdaAux<'T> () : Parser<'T -> bool> =
 
                 let existence = parse { 
                     let! cmp = existence()
-                    let! pred = parenthesize ^ mkLambda()
+                    and! pred = parenthesize ^ mkLambdaCached ctx
                     return wrap <@ fun (source: 'c) -> (%cmp) %pred source @> 
                 }
 
@@ -53,16 +55,23 @@ and private mkLambdaAux<'T> () : Parser<'T -> bool> =
     | Shape.FSharpOption s ->
         s.Element.Accept { new ITypeVisitor<_> with
             member _.Visit<'t>() = parse {
-                let! cmp = mkLambda<'t> ()
+                let! cmp = mkLambdaCached ctx
                 return wrap <@ fun (lhs: 't option) -> lhs.IsSome && (%cmp) lhs.Value @>
+            }
+        }
+
+    | Shape.Nullable s ->
+        s.Accept { new INullableVisitor<_> with
+            member _.Visit<'t when 't : (new : unit -> 't) and 't :> ValueType and 't : struct>() = parse {
+                let! cmp = mkLambdaCached ctx
+                return wrap <@ fun (lhs: 't Nullable) -> lhs.HasValue && (%cmp) lhs.Value @>
             }
         }
     
     | Shape.Poco _ ->
         parse { 
             let! param = newParam typeof<'T>
-            let! body = mkComparison ^ Expr.Var param
-
+            let! body = mkComparison (Expr.Var param)
             return Expr.Lambda(param, body) |> Expr.cast<'T -> bool>
         }
 
@@ -71,38 +80,49 @@ and private mkLambdaAux<'T> () : Parser<'T -> bool> =
             member _.Visit<'t when 't: comparison>() =
                 let comparison = parse {
                     let! cmp = numberComparison()
-                    let! rhs = mkConst()
+                    and! rhs = mkConst()
                     return wrap <@ fun (lhs: 't) -> (%cmp) lhs %rhs @>
                 }
 
                 let inclusion = parse {
                     let! cmp = inclusion()
-                    let! rhs = mkConst()
+                    and! rhs = mkConst()
                     return wrap <@ fun (lhs: 't) -> (%cmp) lhs %rhs @>
                 }
 
                 comparison <|> inclusion
         }
 
-    | Shape.Nullable s ->
-        s.Accept { new INullableVisitor<_> with
-            member _.Visit<'t when 't : (new : unit -> 't) and 't :> ValueType and 't : struct>() = parse {
-                let! cmp = mkLambda<'t> ()
-                return wrap <@ fun (lhs: 't Nullable) -> lhs.HasValue && (%cmp) lhs.Value @>
-            }
-        }
-    
     | _ -> unsupported typeof<'T>
 
 and mkComparison param =
-    mkLogicalChain ^ parse { 
-        let! prop = mkPropChain param
-        let shape = TypeShape.Create(prop.Type)
-        return! shape.Accept { new ITypeVisitor<_> with
-            override _.Visit<'t>() = 
-                mkLambda<'t>() |>> fun f -> <@ (%f) %(Expr.Cast prop) @>
+    mkPropChain param >>= fun prop -> 
+        TypeShape.Create(prop.Type).Accept { 
+            new ITypeVisitor<_> with
+                override _.Visit<'t>() = parse { 
+                    let! cmp = mkLambda<'t>() 
+                    return <@ (%cmp) %(Expr.Cast prop) @>
+                }
         }
-    }
+    |> mkLogicalChain
+
+and mkPropChain (instance: Expr) : Parser<Expr, State> =
+    let error = Reply(Error, expectedString ^ sprintf "property of %A" instance.Type)
+    fun stream ->
+        let initState = stream.State
+        let label = ident stream
+        match label.Status with
+        | Ok ->
+            match instance.Type.GetProperty label.Result with
+            | null ->
+                stream.BacktrackTo initState
+                error
+
+            | prop ->
+                let next = Expr.PropertyGet(instance, prop)
+                if stream.Skip '.' then mkPropChain next stream else Reply next
+
+        | _ -> error
 
 and mkLogicalChain parser =
     let mkOperation operator operand =
@@ -126,6 +146,5 @@ let mkLambdaUntyped ty = parse {
     let cmp  = mkComparison var |>> Expr.untyped
     
     let! body = attempt prop <|> cmp
-    
     return Expr.Lambda(param, body)
 }
