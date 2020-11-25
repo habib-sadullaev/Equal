@@ -19,73 +19,65 @@ module private Linq =
     type Predicate<'T> = Expression<Func<'T, bool>>
     type Selector<'T, 'R> = Expression<Func<'T, 'R>>
     
-    let rec normalize (e: Expr) : Expr =
+    let private (|TypeShape|) (e: Expr) = TypeShape.Create e.Type
+
+    let rec private normalize (e: Expr) : Expr =
         match e with
-        | DerivedPatterns.SpecificCall <@ Array.contains @> (None, _, [e1; e2]) ->
-            TypeShape.Create(e1.Type).Accept { new ITypeVisitor<_> with
+        | DerivedPatterns.SpecificCall <@ Array.contains @> (None, _, [elem & TypeShape s; source]) ->
+            s.Accept { new ITypeVisitor<_> with
                 member _.Visit<'t>() =
-                    <@@ (%(Expr.Cast<'t []> e2)).Contains %(Expr.Cast<'t> e1) @@> }
-
-        | DerivedPatterns.SpecificCall <@ Seq.isEmpty   @> (None, _, [e])
-        | DerivedPatterns.SpecificCall <@ List.isEmpty  @> (None, _, [e])
-        | DerivedPatterns.SpecificCall <@ Array.isEmpty @> (None, _, [e]) ->
-            match TypeShape.Create(e.Type) with
-            | Shape.Enumerable s ->
-                s.Accept { new IEnumerableVisitor<_> with
-                    member _.Visit<'c, 'e when 'c :> seq<'e>>() =
-                        <@@ (%(Expr.Cast<'c> e)).Any() @@> }
-            | _ -> failwith ""
-        
-        | DerivedPatterns.SpecificCall <@ Seq.exists   @> (None, _, [e1; e2])
-        | DerivedPatterns.SpecificCall <@ List.exists  @> (None, _, [e1; e2])
-        | DerivedPatterns.SpecificCall <@ Array.exists @> (None, _, [e1; e2]) ->
-            match TypeShape.Create(e2.Type) with
-            | Shape.Enumerable s ->
-                s.Accept { new IEnumerableVisitor<_> with
-                    member _.Visit<'c, 'e when 'c :> seq<'e>>() =
-                        <@@ (%(Expr.Cast<'c> e2)).Any %(e1 |> normalize |> Expr.Cast) @@> }
-            | _ -> failwith ""
-
-        | DerivedPatterns.SpecificCall <@ Seq.forall   @> (None, _, [e1; e2])
-        | DerivedPatterns.SpecificCall <@ List.forall  @> (None, _, [e1; e2])
-        | DerivedPatterns.SpecificCall <@ Array.forall @> (None, _, [e1; e2]) ->
-            match TypeShape.Create(e2.Type) with
-            | Shape.Enumerable s ->
-                s.Accept { new IEnumerableVisitor<_> with
-                    member _.Visit<'c, 'e when 'c :> seq<'e>>() =
-                        <@@ (%(Expr.Cast<'c> e2)).All %(e1 |> normalize |> Expr.Cast) @@> }
-            | _ -> failwith ""
-
+                    <@@ (%(Expr.Cast<'t []> source)).Contains %(Expr.Cast<'t> elem) @@> }
+    
+        | DerivedPatterns.SpecificCall <@ Seq.isEmpty   @> (None, _, [source & TypeShape (Shape.Enumerable s)])
+        | DerivedPatterns.SpecificCall <@ List.isEmpty  @> (None, _, [source & TypeShape (Shape.Enumerable s)])
+        | DerivedPatterns.SpecificCall <@ Array.isEmpty @> (None, _, [source & TypeShape (Shape.Enumerable s)]) ->
+            s.Accept { new IEnumerableVisitor<_> with
+                member _.Visit<'c, 'e when 'c :> seq<'e>>() =
+                    <@@ (%(Expr.Cast<'c> source)).Any() @@> }
+    
+        | DerivedPatterns.SpecificCall <@ Seq.exists   @> (None, _, [pred; source & TypeShape (Shape.Enumerable s)])
+        | DerivedPatterns.SpecificCall <@ List.exists  @> (None, _, [pred; source & TypeShape (Shape.Enumerable s)])
+        | DerivedPatterns.SpecificCall <@ Array.exists @> (None, _, [pred; source & TypeShape (Shape.Enumerable s)]) ->
+            s.Accept { new IEnumerableVisitor<_> with
+                member _.Visit<'c, 'e when 'c :> seq<'e>>() =
+                    <@@ (%(Expr.Cast<'c> source)).Any %(pred |> normalize |> Expr.Cast) @@> }
+    
+        | DerivedPatterns.SpecificCall <@ Seq.forall   @> (None, _, [pred; source & TypeShape (Shape.Enumerable s)])
+        | DerivedPatterns.SpecificCall <@ List.forall  @> (None, _, [pred; source & TypeShape (Shape.Enumerable s)])
+        | DerivedPatterns.SpecificCall <@ Array.forall @> (None, _, [pred; source & TypeShape (Shape.Enumerable s)]) ->
+            s.Accept { new IEnumerableVisitor<_> with
+                member _.Visit<'c, 'e when 'c :> seq<'e>>() =
+                    <@@ (%(Expr.Cast<'c> source)).All %(pred |> normalize |> Expr.Cast) @@> }
+    
         | ExprShape.ShapeVar _ -> e
-
-        | ExprShape.ShapeLambda(_, Patterns.Lambda _) ->
-            failwithf "unsupported type %A" e.Type
-        
-        | ExprShape.ShapeLambda(x, e) ->
-            let obj = TypeShape.Create x.Type
-            let res = TypeShape.Create e.Type
-
-            obj.Accept { 
+    
+        | ExprShape.ShapeLambda(_, Patterns.Lambda _) -> failwithf "unsupported type %A" e.Type
+    
+        | ExprShape.ShapeLambda(x, es) ->
+            let dom = TypeShape.Create x.Type
+            let cod = TypeShape.Create es.Type
+    
+            dom.Accept {
                 new ITypeVisitor<_> with
                     member _.Visit<'dom>() =
-                        res.Accept {
+                        cod.Accept {
                             new ITypeVisitor<_> with
                                 member _.Visit<'cod>() =
-                                    Expr.NewDelegate(typeof<Func<'dom, 'cod>>, [x], normalize e)
+                                    Expr.NewDelegate(typeof<Func<'dom, 'cod>>, [x], normalize es)
                         }
             }
-        
+    
         | ExprShape.ShapeCombination(obj, es) ->
             ExprShape.RebuildShapeCombination(obj, List.map normalize es)
 
-    let toLambdaExpression (e: Expr) : Expression = 
+    let private toLambdaExpression (e: Expr) : Expression = 
         normalize e |> LeafExpressionConverter.QuotationToExpression 
 
-    let predicate<'T> = 
+    let private predicate<'T> = 
         mkLambda<'T>() 
         |>> fun x -> x |> toLambdaExpression :?> Predicate<'T>
 
-    let order<'T> : Parser<struct(LambdaExpression * bool) list, State> =
+    let private order<'T> : Parser<struct(LambdaExpression * bool) list, State> =
         let asc = stringCIReturn "ASC" true 
         let desc = stringCIReturn "DESC" false
         let direction = desc <|> asc <|>% true .>> spaces
@@ -94,7 +86,7 @@ module private Linq =
         sepBy (expr .>>. direction) (pchar ',' .>> spaces)
         |>> List.map (fun (x, d) -> struct(downcast toLambdaExpression x, d))
 
-    let mkLinqExpression<'T> =
+    let private mkLinqExpression<'T> =
         parse { let! pred  = predicate<'T> .>> spaces
                 and! _     = skipStringCI "ORDER BY" .>> spaces
                 and! order = order<'T> .>> spaces
