@@ -21,30 +21,33 @@ module private Linq =
     
     let private (|TypeShape|) (e: Expr) = TypeShape.Create e.Type
 
+    let private (|MethodCall|_|) m =
+        function DerivedPatterns.SpecificCall m (None, _, args) -> Some args | _ -> None
+
     let rec private normalize (e: Expr) : Expr =
         match e with
-        | DerivedPatterns.SpecificCall <@ Array.contains @> (None, _, [elem & TypeShape s; source]) ->
+        | MethodCall <@ Array.contains @> [elem & TypeShape s; source] ->
             s.Accept { new ITypeVisitor<_> with
                 member _.Visit<'t>() =
                     <@@ (%(Expr.Cast<'t []> source)).Contains %(Expr.Cast<'t> elem) @@> }
     
-        | DerivedPatterns.SpecificCall <@ Seq.isEmpty   @> (None, _, [source & TypeShape (Shape.Enumerable s)])
-        | DerivedPatterns.SpecificCall <@ List.isEmpty  @> (None, _, [source & TypeShape (Shape.Enumerable s)])
-        | DerivedPatterns.SpecificCall <@ Array.isEmpty @> (None, _, [source & TypeShape (Shape.Enumerable s)]) ->
+        | MethodCall <@ Seq.isEmpty   @> [source & TypeShape (Shape.Enumerable s)]
+        | MethodCall <@ List.isEmpty  @> [source & TypeShape (Shape.Enumerable s)]
+        | MethodCall <@ Array.isEmpty @> [source & TypeShape (Shape.Enumerable s)] ->
             s.Accept { new IEnumerableVisitor<_> with
                 member _.Visit<'c, 'e when 'c :> seq<'e>>() =
                     <@@ (%(Expr.Cast<'c> source)).Any() @@> }
     
-        | DerivedPatterns.SpecificCall <@ Seq.exists   @> (None, _, [pred; source & TypeShape (Shape.Enumerable s)])
-        | DerivedPatterns.SpecificCall <@ List.exists  @> (None, _, [pred; source & TypeShape (Shape.Enumerable s)])
-        | DerivedPatterns.SpecificCall <@ Array.exists @> (None, _, [pred; source & TypeShape (Shape.Enumerable s)]) ->
+        | MethodCall <@ Seq.exists   @> [pred; source & TypeShape (Shape.Enumerable s)]
+        | MethodCall <@ List.exists  @> [pred; source & TypeShape (Shape.Enumerable s)]
+        | MethodCall <@ Array.exists @> [pred; source & TypeShape (Shape.Enumerable s)] ->
             s.Accept { new IEnumerableVisitor<_> with
                 member _.Visit<'c, 'e when 'c :> seq<'e>>() =
                     <@@ (%(Expr.Cast<'c> source)).Any %(pred |> normalize |> Expr.Cast) @@> }
     
-        | DerivedPatterns.SpecificCall <@ Seq.forall   @> (None, _, [pred; source & TypeShape (Shape.Enumerable s)])
-        | DerivedPatterns.SpecificCall <@ List.forall  @> (None, _, [pred; source & TypeShape (Shape.Enumerable s)])
-        | DerivedPatterns.SpecificCall <@ Array.forall @> (None, _, [pred; source & TypeShape (Shape.Enumerable s)]) ->
+        | MethodCall <@ Seq.forall   @> [pred; source & TypeShape (Shape.Enumerable s)]
+        | MethodCall <@ List.forall  @> [pred; source & TypeShape (Shape.Enumerable s)]
+        | MethodCall <@ Array.forall @> [pred; source & TypeShape (Shape.Enumerable s)] ->
             s.Accept { new IEnumerableVisitor<_> with
                 member _.Visit<'c, 'e when 'c :> seq<'e>>() =
                     <@@ (%(Expr.Cast<'c> source)).All %(pred |> normalize |> Expr.Cast) @@> }
