@@ -27,30 +27,38 @@ module private Linq =
     let rec private normalize (e: Expr) : Expr =
         match e with
         | MethodCall <@ Array.contains @> [elem & TypeShape s; source] ->
-            s.Accept { new ITypeVisitor<_> with
-                member _.Visit<'t>() =
-                    <@@ (%(Expr.Cast<'t []> source)).Contains %(Expr.Cast<'t> elem) @@> }
+            s.Accept { 
+                new ITypeVisitor<_> with
+                    member _.Visit<'t>() =
+                        <@@ (%(Expr.Cast<'t []> source)).Contains %(Expr.Cast<'t> elem) @@>
+            }
     
         | MethodCall <@ Seq.isEmpty   @> [source & TypeShape (Shape.Enumerable s)]
         | MethodCall <@ List.isEmpty  @> [source & TypeShape (Shape.Enumerable s)]
         | MethodCall <@ Array.isEmpty @> [source & TypeShape (Shape.Enumerable s)] ->
-            s.Accept { new IEnumerableVisitor<_> with
-                member _.Visit<'c, 'e when 'c :> seq<'e>>() =
-                    <@@ (%(Expr.Cast<'c> source)).Any() @@> }
+            s.Accept { 
+                new IEnumerableVisitor<_> with
+                    member _.Visit<'c, 'e when 'c :> seq<'e>>() =
+                        <@@ (%(Expr.Cast<'c> source)).Any() @@> 
+            }
     
         | MethodCall <@ Seq.exists   @> [pred; source & TypeShape (Shape.Enumerable s)]
         | MethodCall <@ List.exists  @> [pred; source & TypeShape (Shape.Enumerable s)]
         | MethodCall <@ Array.exists @> [pred; source & TypeShape (Shape.Enumerable s)] ->
-            s.Accept { new IEnumerableVisitor<_> with
-                member _.Visit<'c, 'e when 'c :> seq<'e>>() =
-                    <@@ (%(Expr.Cast<'c> source)).Any %(pred |> normalize |> Expr.Cast) @@> }
+            s.Accept { 
+                new IEnumerableVisitor<_> with
+                    member _.Visit<'c, 'e when 'c :> seq<'e>>() =
+                        <@@ (%(Expr.Cast<'c> source)).Any %(pred |> normalize |> Expr.Cast) @@> 
+            }
     
         | MethodCall <@ Seq.forall   @> [pred; source & TypeShape (Shape.Enumerable s)]
         | MethodCall <@ List.forall  @> [pred; source & TypeShape (Shape.Enumerable s)]
         | MethodCall <@ Array.forall @> [pred; source & TypeShape (Shape.Enumerable s)] ->
-            s.Accept { new IEnumerableVisitor<_> with
-                member _.Visit<'c, 'e when 'c :> seq<'e>>() =
-                    <@@ (%(Expr.Cast<'c> source)).All %(pred |> normalize |> Expr.Cast) @@> }
+            s.Accept {
+                new IEnumerableVisitor<_> with
+                    member _.Visit<'c, 'e when 'c :> seq<'e>>() =
+                        <@@ (%(Expr.Cast<'c> source)).All %(pred |> normalize |> Expr.Cast) @@> 
+            }
     
         | ExprShape.ShapeVar _ -> e
     
