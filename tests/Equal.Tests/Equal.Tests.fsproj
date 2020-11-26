@@ -17,6 +17,7 @@
     <Compile Include="LogicalChainTests.fs" />
     <Compile Include="ExpressionTests.fs" />
     <Compile Include="UntypedExpressionTests.fs" />
+    <Compile Include="LinqExpressionTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>

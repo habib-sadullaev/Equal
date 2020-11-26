@@ -15,7 +15,7 @@ type QueryResult<'T> =
       Order: struct(LambdaExpression * bool) list }
 
 [<AutoOpen>]
-module private Linq =
+module Linq =
     type Predicate<'T> = Expression<Func<'T, bool>>
     type Selector<'T, 'R> = Expression<Func<'T, 'R>>
     
@@ -64,9 +64,9 @@ module private Linq =
     
         | ExprShape.ShapeLambda(_, Patterns.Lambda _) -> failwithf "unsupported type %A" e.Type
     
-        | ExprShape.ShapeLambda(x, es) ->
+        | ExprShape.ShapeLambda(x, e) ->
             let dom = TypeShape.Create x.Type
-            let cod = TypeShape.Create es.Type
+            let cod = TypeShape.Create e.Type
     
             dom.Accept {
                 new ITypeVisitor<_> with
@@ -74,19 +74,27 @@ module private Linq =
                         cod.Accept {
                             new ITypeVisitor<_> with
                                 member _.Visit<'cod>() =
-                                    Expr.NewDelegate(typeof<Func<'dom, 'cod>>, [x], normalize es)
+                                    Expr.NewDelegate(typeof<Func<'dom, 'cod>>, [x], normalize e)
                         }
             }
     
         | ExprShape.ShapeCombination(obj, es) ->
             ExprShape.RebuildShapeCombination(obj, List.map normalize es)
 
-    let private toLambdaExpression (e: Expr) : Expression = 
+    let toLambdaExpression (e: Expr) : Expression = 
         normalize e |> LeafExpressionConverter.QuotationToExpression 
 
     let private predicate<'T> = 
         mkLambda<'T>() 
         |>> fun x -> x |> toLambdaExpression :?> Predicate<'T>
+    
+    let [<Literal>] maxChars = Int32.MaxValue
+    let private skipUntilFound str (stream: CharStream<State>) =
+        let init = stream.State
+        let mutable found = false
+        stream.SkipCharsOrNewlinesUntilCaseFoldedString(str, maxChars, &found) |> ignore
+        if not found then stream.BacktrackTo init
+        found
 
     let private order<'T> : Parser<struct(LambdaExpression * bool) list, State> =
         let asc = stringCIReturn "ASC" true 
@@ -94,14 +102,61 @@ module private Linq =
         let direction = desc <|> asc <|>% true .>> spaces
         let expr = mkLambdaUntyped typeof<'T> .>> spaces
 
-        sepBy (expr .>>. direction) (pchar ',' .>> spaces)
-        |>> List.map (fun (x, d) -> struct(downcast toLambdaExpression x, d))
+        let (|Splitted|EOF|) =
+            let ascending = Text.FoldCase("ASC")
+            let descending = Text.FoldCase("DESC")
+            fun (stream: CharStream<State>) ->
+                if   stream |> skipUntilFound ascending  then Splitted
+                elif stream |> skipUntilFound descending then Splitted
+                elif stream |> skipUntilFound "," then Splitted
+                else EOF
+
+        let expr =
+            fun (stream: CharStream<State>) ->
+                let init = stream.State
+                match stream with
+                | Splitted ->
+                    use substream = stream.CreateSubstream(init)
+                    let reply1 = expr substream
+                    if reply1.Status = Ok then
+                        let reply2 = direction stream
+                        if reply2.Status = Ok then
+                            Reply(struct(reply1.Result, reply2.Result))
+                        else
+                            Reply(reply2.Status, reply2.Error)
+                    else
+                        Reply(reply1.Status, reply1.Error)
+                | EOF ->
+                    let reply1 = expr stream
+                    if reply1.Status = Ok then
+                        Reply(struct(reply1.Result, true))
+                    else
+                        Reply(reply1.Status, reply1.Error)
+
+        sepBy (expr .>> spaces) (pchar ',' .>> spaces)
+        |>> List.map (fun struct (x, d) -> struct(downcast toLambdaExpression x, d))
 
     let private mkLinqExpression<'T> =
-        parse { let! pred  = predicate<'T> .>> spaces
-                and! _     = skipStringCI "ORDER BY" .>> spaces
-                and! order = order<'T> .>> spaces
-                return { Predicate = pred; Order = order } }
+        let p1 = predicate<'T> |>> fun p -> { Predicate = p; Order = [] }
+        let p2 = order<'T>
+        let orderBy = Text.FoldCase("ORDER BY ")
+        
+        fun (stream: CharStream<State>) ->
+            let init = stream.State
+            if stream |> skipUntilFound orderBy then
+                use substream = stream.CreateSubstream(init)
+                let reply1 = p1 substream
+                if reply1.Status = ReplyStatus.Ok then 
+                    stream.SkipCaseFolded(orderBy) |> ignore
+                    let reply2 = p2 stream
+                    if reply2.Status = Ok then
+                        Reply { reply1.Result with Order = reply2.Result }
+                    else
+                        Reply(reply2.Status, reply2.Error)
+                else
+                    Reply(reply1.Status, reply1.Error)
+            else
+                p1 stream
 
     let translate<'T> query = 
         runParserOnString (mkLinqExpression<'T> .>> eof) state "embeddable query" query
