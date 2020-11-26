@@ -22,16 +22,6 @@
   <ItemGroup>
     <None Include="paket.references" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)'=='netcoreapp3.1'">
-    <PackageReference Update="FSharp.Core" Version="5.0" />
-    <PackageReference Update="Expecto" Version="9.*" />
-    <PackageReference Update="Mono.Cecil" Version="0.*" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)'=='net462'">
-    <PackageReference Update="FSharp.Core" Version="4.7.2" />
-    <PackageReference Update="Expecto" Version="8.9.*" />
-    <PackageReference Update="Mono.Cecil" Version="0.10.*" />
-  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Equal\Equal.fsproj" />
   </ItemGroup>
