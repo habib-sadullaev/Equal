@@ -123,12 +123,12 @@ let tests =
             [ "!="; "."; "<"; "<="; "<>"; "="; ">"; ">="; "ALL"; "ANY"; "CONTAINS"; 
               "ENDS WITH"; "IN"; "NOT IN"; "STARTS WITH"; "end of input" ] }
 
-        predicateParser |> whenParsing "NOT A OR B"     |> expects { position = 4L;  errors = ["("] }
+        predicateParser |> whenParsing "NOT A OR B"     |> expects { position =  4L; errors = ["("] }
         predicateParser |> whenParsing "A.B.C IN 'aaa'" |> expects { position = 10L; errors = ["("] }
         predicateParser |> whenParsing "A contains aaa" |> expects { position = 12L; errors = ["'"] }
-        predicateParser |> whenParsing "'a'"            |> expects { position = 4L;  errors = ["!=";  "<"; "<="; "<>"; "="; ">"; ">="] }
-        predicateParser |> whenParsing ""               |> expects { position = 1L;  errors = ["'"; "("; "NOT"; "property"] }
-        predicateParser |> whenParsing  "A || B"        |> expects { position = 3L;  errors = 
+        predicateParser |> whenParsing "'a'"            |> expects { position =  4L; errors = ["!=";  "<"; "<="; "<>"; "="; ">"; ">="] }
+        predicateParser |> whenParsing ""               |> expects { position =  1L; errors = ["'"; "("; "NOT"; "property"] }
+        predicateParser |> whenParsing  "A || B"        |> expects { position =  3L; errors = 
             [ "!="; "."; "<"; "<="; "<>"; "="; ">"; ">="; "ALL"; "AND"; "ANY"; "CONTAINS";
               "ENDS WITH"; "IN"; "NOT IN"; "OR"; "STARTS WITH"; "end of input" ] }
     ]

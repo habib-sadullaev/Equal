@@ -61,12 +61,12 @@ let tests =
         }
 
         testList "with invalid input" [
-            ""               |> failedWith { position = 1L;  errors = [ testType.FullName ] }
-            "Int."           |> failedWith { position = 5L;  errors = [ typeof<int>.FullName ] }
-            "Int2"           |> failedWith { position = 1L;  errors = [ sprintf "%A" testType ] }
-            "Int2."          |> failedWith { position = 1L;  errors = [ sprintf "%O" testType ] }
-            "Parent1."       |> failedWith { position = 1L;  errors = [ testType.FullName ] }
-            "Parent."        |> failedWith { position = 8L;  errors = [ testType.FullName ] }
+            ""               |> failedWith { position =  1L; errors = [ testType.FullName ] }
+            "Int."           |> failedWith { position =  5L; errors = [ typeof<int>.FullName ] }
+            "Int2"           |> failedWith { position =  1L; errors = [ sprintf "%A" testType ] }
+            "Int2."          |> failedWith { position =  1L; errors = [ sprintf "%O" testType ] }
+            "Parent1."       |> failedWith { position =  1L; errors = [ testType.FullName ] }
+            "Parent."        |> failedWith { position =  8L; errors = [ testType.FullName ] }
             "Parent.String." |> failedWith { position = 15L; errors = [ typeof<string>.FullName ] }
             
             "Parent.Parent.String1.Length" |> failedWith { position = 15L; errors = [ testType.FullName ] }

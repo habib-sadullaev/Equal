@@ -35,7 +35,7 @@ let tests =
 
         ""                |> failedWith { position = 1L;  errors = ["("; "NOT"; "property of Core+TestRecord"] }
         "TestArray IS "   |> failedWith { position = 11L; errors = [ "ALL"; "ANY"; "IS EMPTY" ] }
-        "String >"        |> failedWith { position = 8L;  errors = [ "CONTAINS"; "ENDS WITH"; "STARTS WITH" ] }
+        "String >"        |> failedWith { position =  8L; errors = [ "CONTAINS"; "ENDS WITH"; "STARTS WITH" ] }
         "OptionalEnum &&" |> failedWith { position = 14L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
         "HasValue &&"     |> failedWith { position = 10L; errors = ["AND"; "OR"; "end of input"] }
     ]

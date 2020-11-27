@@ -7,18 +7,18 @@ open Equal.Expression
 
 let wrap str = Var(str, typeof<bool>) |> Expr.Var |> Expr.Cast<bool>
 
-let A = wrap "A"
-let B = wrap "B"
-let C = wrap "C"
-let D = wrap "D"
-let E = wrap "E"
+let rec A = wrap ^ nameof A
+let rec B = wrap ^ nameof B
+let rec C = wrap ^ nameof C
+let rec D = wrap ^ nameof D
+let rec E = wrap ^ nameof E
 
 let logicalParser = 
     mkLogicalChain ^ choice [
-        stringReturn "A" A
-        stringReturn "B" B
-        stringReturn "C" C
-        stringReturn "D" D
+        A |> stringReturn ^ nameof A
+        B |> stringReturn ^ nameof B
+        C |> stringReturn ^ nameof C
+        D |> stringReturn ^ nameof D
     ] .>> spaces
 
 let inline parsedInto expected input =

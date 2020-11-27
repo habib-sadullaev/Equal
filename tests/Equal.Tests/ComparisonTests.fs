@@ -45,7 +45,7 @@ let tests =
         "Children IS EMPTY" |> parsedInto <@ (%param).Children.IsSome && List.isEmpty (%param).Children.Value @>
 
         "HasValue = true"   |> failedWith { position = 10L; errors = [ "AND"; "OR"; "end of input" ] }
-        "String = 'zzz'"    |> failedWith { position = 8L;  errors = [ "CONTAINS"; "ENDS WITH"; "STARTS WITH" ] }
+        "String = 'zzz'"    |> failedWith { position =  8L; errors = [ "CONTAINS"; "ENDS WITH"; "STARTS WITH" ] }
         "Parent.Parent.Int" |> failedWith { position = 18L; errors = [ "<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN" ] }
         "NullableFloat"     |> failedWith { position = 14L; errors = [ "<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN" ] }
         "OptionalString"    |> failedWith { position = 15L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"] }
