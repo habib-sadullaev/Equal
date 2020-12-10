@@ -12,9 +12,9 @@ open Equal.Expression
 
 type QueryResult<'T> = 
     { Predicate: Expression<Func<'T, bool>>
-      Order: struct(LambdaExpression * bool) list }
+      OrderBy: struct(LambdaExpression * bool) list }
 
-[<AutoOpen>]
+[<RequireQualifiedAccess>]
 module Linq =
     type Predicate<'T> = Expression<Func<'T, bool>>
     type Selector<'T, 'R> = Expression<Func<'T, 'R>>
@@ -59,6 +59,8 @@ module Linq =
                     member _.Visit<'c, 'e when 'c :> seq<'e>>() =
                         <@@ (%(Expr.Cast<'c> source)).All %(pred |> normalize |> Expr.Cast) @@> 
             }
+
+        | Patterns.NewDelegate(ty, parameters, body) -> Expr.NewDelegate(ty, parameters, normalize body)
     
         | ExprShape.ShapeVar _ -> e
     
@@ -81,14 +83,14 @@ module Linq =
         | ExprShape.ShapeCombination(obj, es) ->
             ExprShape.RebuildShapeCombination(obj, List.map normalize es)
 
-    let toLambdaExpression (e: Expr) : Expression = 
-        normalize e |> LeafExpressionConverter.QuotationToExpression 
+    let toLambdaExpression (e: Expr) : LambdaExpression = 
+        normalize e |> LeafExpressionConverter.QuotationToExpression :?> LambdaExpression
 
     let private predicate<'T> = 
         mkLambda<'T>() 
         |>> fun x -> x |> toLambdaExpression :?> Predicate<'T>
     
-    let [<Literal>] maxChars = Int32.MaxValue
+    let [<Literal>] private maxChars = Int32.MaxValue
     let private skipUntilFound str (stream: CharStream<State>) =
         let init = stream.State
         let mutable found = false
@@ -134,10 +136,10 @@ module Linq =
                         Reply(reply1.Status, reply1.Error)
 
         sepBy (expr .>> spaces) (pchar ',' .>> spaces)
-        |>> List.map (fun struct (x, d) -> struct(downcast toLambdaExpression x, d))
+        |>> List.map (fun struct (x, d) -> struct(toLambdaExpression x, d))
 
     let private mkLinqExpression<'T> =
-        let p1 = predicate<'T> |>> fun p -> { Predicate = p; Order = [] }
+        let p1 = predicate<'T> |>> fun p -> { Predicate = p; OrderBy = [] }
         let p2 = order<'T>
         let orderBy = Text.FoldCase("ORDER BY ")
         
@@ -150,7 +152,7 @@ module Linq =
                     stream.SkipCaseFolded(orderBy) |> ignore
                     let reply2 = p2 stream
                     if reply2.Status = Ok then
-                        Reply { reply1.Result with Order = reply2.Result }
+                        Reply { reply1.Result with OrderBy = reply2.Result }
                     else
                         Reply(reply2.Status, reply2.Error)
                 else
@@ -175,25 +177,25 @@ module Linq =
                 selector :?> Selector<'T, 'a>
                 |> if isAsc then source.ThenBy else source.ThenByDescending }
 
-type [<Extension>] Expression =
+type [<Extension>] Linq =
     static member CreateQuery<'T>(query: string) =
-        match translate<'T> query with
+        match Linq.translate<'T> query with
         | Success(v, _, _) -> v
         | Failure(e, _, _) -> failwith e
 
-open type Expression
+open type Linq
  
-type Expression with
+type Linq with
     [<Extension>]
     static member Apply(source: IQueryable<'TSource>, query: string) : IQueryable<'TSource> =
-        let { Predicate = predicate; Order = order } = CreateQuery<'TSource> query
-        source.Where(predicate).OrderBy(order)
+        let { Predicate = predicate; OrderBy = orderBy } = CreateQuery<'TSource> query
+        source.Where(predicate).OrderBy(orderBy)
     
     [<Extension>]
     static member private OrderBy(source: IQueryable<'TSource>, expressions: struct(LambdaExpression * bool) list) =
         match expressions with
         | []      ->  source
         | e :: es -> 
-            let mutable res = source |> orderBy e
-            for e in es do res <- res |> thenBy e
+            let mutable res = source |> Linq.orderBy e
+            for e in es do res <- res |> Linq.thenBy e
             upcast res
