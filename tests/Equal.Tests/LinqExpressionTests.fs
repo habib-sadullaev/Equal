@@ -26,8 +26,8 @@ let tests =
                 let expected = 
                     quote <@ fun Param_0 -> Param_0.String.StartsWith("") && Param_0.Int > 0 @>
                     |> orderBy [ 
-                        struct(upcast quote <@ fun Param_0 -> Param_0.Int @>, false)
-                        struct(upcast quote <@ fun Param_0 -> Param_0.String @>, true) 
+                        { Selector = quote <@ fun Param_0 -> Param_0.Int @>;    Ascending = false }
+                        { Selector = quote <@ fun Param_0 -> Param_0.String @>; Ascending = true  } 
                     ]
                 
                 Expect.equal (string actual) (string expected) (sprintf "%A\n%A" actual expected)
@@ -53,8 +53,8 @@ let tests =
                 let expected = 
                     quote <@ fun Param_0 -> Param_0.Int > 0 @>
                     |> orderBy [
-                        struct(upcast quote <@ fun Param_0 -> Param_0.Int @>, true)
-                        struct(upcast quote <@ fun Param_0 -> Param_0.Int @>, false)
+                        { Selector = quote <@ fun Param_0 -> Param_0.Int @>; Ascending = true  }
+                        { Selector = quote <@ fun Param_0 -> Param_0.Int @>; Ascending = false }
                     ]
             
                 Expect.equal (string actual) (string expected) (sprintf "%A\n%A" actual expected)
@@ -68,8 +68,8 @@ let tests =
                 let expected = 
                     quote <@ fun Param_0 -> Param_0.Int > 0 @>
                     |> orderBy [
-                        struct(upcast quote <@ fun Param_0 -> Param_0.String @>, false)
-                        struct(upcast quote <@ fun Param_0 -> Param_0.String @>, true)
+                        { Selector = quote <@ fun Param_0 -> Param_0.String @>; Ascending = false }
+                        { Selector = quote <@ fun Param_0 -> Param_0.String @>; Ascending = true  }
                     ]
             
                 Expect.equal (string actual) (string expected) (sprintf "%A\n%A" actual expected)
@@ -83,10 +83,10 @@ let tests =
                 let expected = 
                     quote <@ fun Param_0 -> Param_0.Int > 0 @>
                     |> orderBy [
-                        struct(upcast quote <@ fun Param_0 -> Param_0.String @>, true)
-                        struct(upcast quote <@ fun Param_0 -> Param_0.String @>, false)
-                        struct(upcast quote <@ fun Param_0 -> Param_0.String @>, true)
-                        struct(upcast quote <@ fun Param_0 -> Param_0.String @>, true)
+                        { Selector = quote <@ fun Param_0 -> Param_0.String @>; Ascending = true  }
+                        { Selector = quote <@ fun Param_0 -> Param_0.String @>; Ascending = false }
+                        { Selector = quote <@ fun Param_0 -> Param_0.String @>; Ascending = true  }
+                        { Selector = quote <@ fun Param_0 -> Param_0.String @>; Ascending = true  }
                     ]
             
                 Expect.equal (string actual) (string expected) (sprintf "%A\n%A" actual expected)

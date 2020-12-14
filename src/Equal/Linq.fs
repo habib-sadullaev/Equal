@@ -10,15 +10,14 @@ open FParsec
 open TypeShape.Core
 open Equal.Expression
 
-type QueryResult<'T> = 
-    { Predicate: Expression<Func<'T, bool>>
-      OrderBy: struct(LambdaExpression * bool) list }
+type private Predicate<'T>    = Expression<Func<'T, bool>>
+type private Selector<'T, 'R> = Expression<Func<'T, 'R>>
+
+type [<Struct>] OrderBy         = { Selector: LambdaExpression; Ascending: bool }
+type [<Struct>] QueryResult<'T> = { Predicate: Predicate<'T>; OrderBy: OrderBy list }
 
 [<RequireQualifiedAccess>]
 module Linq =
-    type Predicate<'T> = Expression<Func<'T, bool>>
-    type Selector<'T, 'R> = Expression<Func<'T, 'R>>
-    
     let private (|TypeShape|) (e: Expr) = TypeShape.Create e.Type
 
     let private (|MethodCall|_|) m =
@@ -98,11 +97,11 @@ module Linq =
         if not found then stream.BacktrackTo init
         found
 
-    let private order<'T> : Parser<struct(LambdaExpression * bool) list, State> =
+    let private order<'T> : Parser<OrderBy list, State> =
         let asc = stringCIReturn "ASC" true 
         let desc = stringCIReturn "DESC" false
         let direction = desc <|> asc <|>% true .>> spaces
-        let expr = mkLambdaUntyped typeof<'T> .>> spaces
+        let expr = mkLambdaUntyped typeof<'T> .>> spaces |>> toLambdaExpression
 
         let split =
             let ascending = Text.FoldCase("ASC")
@@ -127,14 +126,13 @@ module Linq =
                 if reply1.Status = Ok then
                     let reply2 = direction stream
                     if reply2.Status = Ok then
-                        Reply(struct(reply1.Result, reply2.Result))
+                        Reply { Selector = reply1.Result;  Ascending = reply2.Result }
                     else
                         Reply(reply2.Status, reply2.Error)
                 else
                     Reply(reply1.Status, reply1.Error)
 
         sepBy (expr .>> spaces) (pchar ',' .>> spaces)
-        |>> List.map (fun struct (x, d) -> struct(toLambdaExpression x, d))
 
     let private mkLinqExpression<'T> =
         let p1 = predicate<'T> |>> fun p -> { Predicate = p; OrderBy = [] }
@@ -161,19 +159,19 @@ module Linq =
     let translate<'T> query = 
         runParserOnString (mkLinqExpression<'T> .>> eof) state "embeddable query" query
     
-    let orderBy struct(selector: LambdaExpression, isAsc: bool) (source: IQueryable<'T>) =
+    let orderBy { Selector = selector; Ascending = asc } (source: IQueryable<'T>) =
         let shape = TypeShape.Create selector.ReturnType
         shape.Accept { new ITypeVisitor<_> with
             member _.Visit<'a>() =
                 selector :?> Selector<'T, 'a>
-                |> if isAsc then source.OrderBy else source.OrderByDescending }
+                |> if asc then source.OrderBy else source.OrderByDescending }
     
-    let thenBy struct(selector: LambdaExpression, isAsc: bool) (source: IOrderedQueryable<'T>) =
+    let thenBy { Selector = selector; Ascending = asc } (source: IOrderedQueryable<'T>) =
         let shape = TypeShape.Create selector.ReturnType
         shape.Accept { new ITypeVisitor<_> with
             member _.Visit<'a>() =
                 selector :?> Selector<'T, 'a>
-                |> if isAsc then source.ThenBy else source.ThenByDescending }
+                |> if asc then source.ThenBy else source.ThenByDescending }
 
 type [<Extension>] Linq =
     static member CreateQuery<'T>(query: string) =
@@ -190,7 +188,7 @@ type Linq with
         source.Where(predicate).OrderBy(orderBy)
     
     [<Extension>]
-    static member private OrderBy(source: IQueryable<'TSource>, expressions: struct(LambdaExpression * bool) list) =
+    static member private OrderBy(source: IQueryable<'TSource>, expressions: OrderBy list) =
         match expressions with
         | []      ->  source
         | e :: es -> 
