@@ -104,36 +104,34 @@ module Linq =
         let direction = desc <|> asc <|>% true .>> spaces
         let expr = mkLambdaUntyped typeof<'T> .>> spaces
 
-        let (|Splitted|EOF|) =
+        let split =
             let ascending = Text.FoldCase("ASC")
             let descending = Text.FoldCase("DESC")
             fun (stream: CharStream<State>) ->
-                if   stream |> skipUntilFound ascending  then Splitted
-                elif stream |> skipUntilFound descending then Splitted
-                elif stream |> skipUntilFound "," then Splitted
-                else EOF
+                let init = stream.State
+
+                let mutable found = false
+                stream.SkipCharsOrNewlinesUntilString(",", maxChars, &found) |> ignore
+
+                use substream = stream.CreateSubstream(init)
+
+                if substream |> skipUntilFound ascending || substream |> skipUntilFound descending then 
+                    stream.BacktrackTo substream.State
 
         let expr =
             fun (stream: CharStream<State>) ->
                 let init = stream.State
-                match stream with
-                | Splitted ->
-                    use substream = stream.CreateSubstream(init)
-                    let reply1 = expr substream
-                    if reply1.Status = Ok then
-                        let reply2 = direction stream
-                        if reply2.Status = Ok then
-                            Reply(struct(reply1.Result, reply2.Result))
-                        else
-                            Reply(reply2.Status, reply2.Error)
+                split stream
+                use substream = stream.CreateSubstream(init)
+                let reply1 = expr substream
+                if reply1.Status = Ok then
+                    let reply2 = direction stream
+                    if reply2.Status = Ok then
+                        Reply(struct(reply1.Result, reply2.Result))
                     else
-                        Reply(reply1.Status, reply1.Error)
-                | EOF ->
-                    let reply1 = expr stream
-                    if reply1.Status = Ok then
-                        Reply(struct(reply1.Result, true))
-                    else
-                        Reply(reply1.Status, reply1.Error)
+                        Reply(reply2.Status, reply2.Error)
+                else
+                    Reply(reply1.Status, reply1.Error)
 
         sepBy (expr .>> spaces) (pchar ',' .>> spaces)
         |>> List.map (fun struct (x, d) -> struct(toLambdaExpression x, d))
