@@ -44,5 +44,52 @@ let tests =
             
                 Expect.equal (string actual) (string expected) (sprintf "%A\n%A" actual expected)
             }
+
+            test "Int > 0 order by Int desc, Int asc" {
+                let actual = 
+                    "Int > 0 order by Int ASC, Int DESC"
+                    |> Linq.CreateQuery<TestRecord> 
+
+                let expected = 
+                    quote <@ fun Param_0 -> Param_0.Int > 0 @>
+                    |> orderBy [
+                        struct(upcast quote <@ fun Param_0 -> Param_0.Int @>, true)
+                        struct(upcast quote <@ fun Param_0 -> Param_0.Int @>, false)
+                    ]
+            
+                Expect.equal (string actual) (string expected) (sprintf "%A\n%A" actual expected)
+            }
+
+            test "Int > 0 order by String desc, String asc" {
+                let actual = 
+                    "Int > 0 order by String desc, String asc"
+                    |> Linq.CreateQuery<TestRecord> 
+
+                let expected = 
+                    quote <@ fun Param_0 -> Param_0.Int > 0 @>
+                    |> orderBy [
+                        struct(upcast quote <@ fun Param_0 -> Param_0.String @>, false)
+                        struct(upcast quote <@ fun Param_0 -> Param_0.String @>, true)
+                    ]
+            
+                Expect.equal (string actual) (string expected) (sprintf "%A\n%A" actual expected)
+            }
+
+            test "Int > 0 order by String, String desc, String asc, String" {
+                let actual = 
+                    "Int > 0 order by String, String desc, String asc, String"
+                    |> Linq.CreateQuery<TestRecord> 
+
+                let expected = 
+                    quote <@ fun Param_0 -> Param_0.Int > 0 @>
+                    |> orderBy [
+                        struct(upcast quote <@ fun Param_0 -> Param_0.String @>, true)
+                        struct(upcast quote <@ fun Param_0 -> Param_0.String @>, false)
+                        struct(upcast quote <@ fun Param_0 -> Param_0.String @>, true)
+                        struct(upcast quote <@ fun Param_0 -> Param_0.String @>, true)
+                    ]
+            
+                Expect.equal (string actual) (string expected) (sprintf "%A\n%A" actual expected)
+            }
         ]
     ]
