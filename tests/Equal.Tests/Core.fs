@@ -5,7 +5,8 @@ open FSharp.Quotations
 open Expecto
 open FParsec
 
-type FailInfo = { position: int64; errors: string list }
+type FailInfo =
+    { position: int64; errors: string list }
 
 type TestEnum = One = 1uy | Two = 2uy
 
@@ -48,7 +49,7 @@ let typeName<'T> =
 let private parse parser input =
     match runParserOnString (parser .>> eof) state "test" input with
     | Success(v, _, _) -> Result.Ok v
-    | Failure(_, e, _) -> 
+    | Failure(msg, e, _) -> 
         let rec gatherErrs errs = 
             [ for err in errs |> ErrorMessageList.ToSortedArray do
               match err with
@@ -59,7 +60,7 @@ let private parse parser input =
               | _ -> ()
             ] |> List.distinct |> List.sort
 
-        Result.Error { position = e.Position.Column; errors = gatherErrs e.Messages }
+        Result.Error (msg, { position = e.Position.Column; errors = gatherErrs e.Messages })
 
 let validInput parser input =
     match parse parser input with
@@ -72,11 +73,11 @@ let invalidInput parser input =
     | Result.Ok _ -> failtest "The input should be invalid"
 
 let failed parser expected input =
-    let { position = pos; errors = errs } = invalidInput parser input
+    let msg, { position = pos; errors = errs } = invalidInput parser input
     Expect.equal pos expected.position
         ^ sprintf "incorrect error position\nexpected: '%d'\n  actual: '%d'" expected.position pos
     Expect.equal errs expected.errors
-        ^ sprintf "Incorrect error message\nexpected:\n%A\n  actual:\n%A" expected.errors errs
+        ^ sprintf "Incorrect error message\nexpected:\n%A\nactual:\n%A\nfull message:\n%A" expected.errors errs msg
 
 let parsed parser expected input =
     let actual = validInput parser input
