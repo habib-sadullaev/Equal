@@ -138,13 +138,23 @@ and mkLogicalChain parser =
     
     operation |>> Expr.cleanup
 
-let mkLambdaUntyped ty = parse { 
-    let! param = newParam ty
+let mkLambdaUntyped ty = 
+    let param = newParam ty
+    fun stream ->
+        let param = (param stream).Result
+        let var  = Expr.Var param
+        let init = stream.State
+        let mutable reply = Unchecked.defaultof<_>
+        let prop = mkPropChain var  |>> fun prop -> Expr.Lambda(param, prop)
+        let cmp  = mkComparison var |>> fun cmp  -> Expr.Lambda(param,  cmp)
+        let cmpReply = cmp stream
 
-    let var  = Expr.Var param
-    let prop = mkPropChain var .>> followedBy eof
-    let cmp  = mkComparison var |>> Expr.untyped
-    
-    let! body = attempt prop <|> cmp
-    return Expr.Lambda(param, body)
-}
+        if cmpReply.Status = Ok then
+            reply <- cmpReply
+        else
+            use substream = stream.CreateSubstream init
+            let propReply = prop substream
+            reply <- propReply
+            reply.Error <- mergeErrors propReply.Error cmpReply.Error
+        
+        reply

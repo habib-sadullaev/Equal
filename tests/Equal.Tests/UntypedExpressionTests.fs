@@ -21,8 +21,10 @@ let inline failedWith expected input =
     let name = sprintf "fails parsing '%s'" input |> String.map ^ function '.' -> '_' | x -> x
     test name { failed parser expected input } |> testLabel "with invalid input"
 
+
 [<Tests>]
 let tests =
+    let eof = "end of input"
     testList "untyped expression parser" [
         "TestArray"             |> parsedInto <@ fun Param_0 -> Param_0.TestArray @>
         "TestArray.IsFixedSize" |> parsedInto <@ fun Param_0 -> Param_0.TestArray.IsFixedSize @>
@@ -34,8 +36,8 @@ let tests =
             Param_0.Int < 3 && Param_0.String.Contains "abc" @>
 
         ""                |> failedWith { position = 1L;  errors = ["("; "NOT"; "property of Core+TestRecord"] }
-        "TestArray IS "   |> failedWith { position = 11L; errors = [ "ALL"; "ANY"; "IS EMPTY" ] }
-        "String >"        |> failedWith { position =  8L; errors = [ "CONTAINS"; "ENDS WITH"; "STARTS WITH" ] }
-        "OptionalEnum &&" |> failedWith { position = 14L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
-        "HasValue &&"     |> failedWith { position = 10L; errors = ["AND"; "OR"; "end of input"] }
+        "TestArray IS "   |> failedWith { position = 11L; errors = ["ALL"; "ANY"; "IS EMPTY"; eof] }
+        "String >"        |> failedWith { position =  8L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"; eof] }
+        "OptionalEnum &&" |> failedWith { position = 14L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"; eof] }
+        "HasValue &&"     |> failedWith { position = 10L; errors = ["AND"; "OR"; eof] }
     ]
