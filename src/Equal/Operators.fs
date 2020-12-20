@@ -62,7 +62,16 @@ let existence =
             stringCIReturn "ALL" ^ Expr.lam2 forall
         ] .>> spaces
 
-let mkOperator name operator = stringCIReturn name operator .>> spaces
+let mkOperator name operator : Parser<Expr<'a> -> Expr<'a> -> Expr<'a>, State> =
+    let operator = stringCIReturn name operator
+    fun stream ->
+        let init = stream.State
+        let reply = operator stream
+        if reply.Status = Ok && stream.Peek() |> Char.IsLetterOrDigit then
+            stream.BacktrackTo init
+            Reply(Error, expectedStringCI name)
+        else
+            reply
 
 let AND : Parser<_, State> = mkOperator "AND" ^ fun lhs rhs -> <@ %lhs && %rhs @>
 let OR  : Parser<_, State> = mkOperator "OR"  ^ fun lhs rhs -> <@ %lhs || %rhs @>

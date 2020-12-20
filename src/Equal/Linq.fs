@@ -85,87 +85,35 @@ module Linq =
     let toLambdaExpression (e: Expr) : LambdaExpression = 
         normalize e |> LeafExpressionConverter.QuotationToExpression :?> LambdaExpression
 
-    let private predicate<'T> = 
-        mkLambda<'T>() 
-        |>> fun x -> x |> toLambdaExpression :?> Predicate<'T>
+    let private mkPredicate<'T> = mkLambda<'T>() |>> fun x -> x |> toLambdaExpression :?> Predicate<'T>
     
-    let [<Literal>] private maxChars = Int32.MaxValue
-    let private skipUntilFound str (stream: CharStream<State>) =
-        let init = stream.State
-        let mutable found = false
-        stream.SkipCharsOrNewlinesUntilCaseFoldedString(str, maxChars, &found) |> ignore
-        if not found then stream.BacktrackTo init
-        found
-
-    let private order<'T> : Parser<OrderBy list, State> =
+    let private mkOrderBy<'T> : Parser<OrderBy list, State> =
         let asc = stringCIReturn "ASC" true 
         let desc = stringCIReturn "DESC" false
-        let direction = desc <|> asc <|>% true .>> spaces
-        let expr = mkLambdaUntyped typeof<'T> .>> spaces |>> toLambdaExpression
+        let expr = parse {
+            let! selector = mkLambdaUntyped typeof<'T> .>> spaces |>> toLambdaExpression
+            and! direction = desc <|> asc <|>% true .>> spaces
+            return { Selector = selector; Ascending = direction }
+        }
 
-        let split =
-            let ascending = Text.FoldCase("ASC")
-            let descending = Text.FoldCase("DESC")
-            fun (stream: CharStream<State>) ->
-                let init = stream.State
+        skipStringCI "ORDER BY" >>. spaces >>. sepBy (expr .>> spaces) (pchar ',' .>> spaces)
 
-                let mutable found = false
-                stream.SkipCharsOrNewlinesUntilString(",", maxChars, &found) |> ignore
-
-                use substream = stream.CreateSubstream(init)
-
-                if substream |> skipUntilFound ascending || substream |> skipUntilFound descending then 
-                    stream.BacktrackTo substream.State
-
-        let expr =
-            fun (stream: CharStream<State>) ->
-                let init = stream.State
-                split stream
-                use substream = stream.CreateSubstream(init)
-                let reply1 = expr substream
-                if reply1.Status = Ok then
-                    let reply2 = direction stream
-                    if reply2.Status = Ok then
-                        Reply { Selector = reply1.Result;  Ascending = reply2.Result }
-                    else
-                        Reply(reply2.Status, reply2.Error)
-                else
-                    Reply(reply1.Status, reply1.Error)
-
-        sepBy (expr .>> spaces) (pchar ',' .>> spaces)
-
-    let private mkLinqExpression<'T> =
-        let p1 = predicate<'T> |>> fun p -> { Predicate = p; OrderBy = [] }
-        let p2 = order<'T>
-        let orderBy = Text.FoldCase("ORDER BY ")
-        
-        fun (stream: CharStream<State>) ->
-            let init = stream.State
-            if stream |> skipUntilFound orderBy then
-                use substream = stream.CreateSubstream(init)
-                let reply1 = p1 substream
-                if reply1.Status = ReplyStatus.Ok then 
-                    stream.SkipCaseFolded(orderBy) |> ignore
-                    let reply2 = p2 stream
-                    if reply2.Status = Ok then
-                        Reply { reply1.Result with OrderBy = reply2.Result }
-                    else
-                        Reply(reply2.Status, reply2.Error)
-                else
-                    Reply(reply1.Status, reply1.Error)
-            else
-                p1 stream
+    let private mkLinqExpression<'T> = parse {
+        let! pred = mkPredicate<'T>
+        and! ord  = mkOrderBy<'T> <|>% []
+        return { Predicate = pred; OrderBy = ord }
+    }
 
     let translate<'T> query = 
         runParserOnString (mkLinqExpression<'T> .>> eof) state "embeddable query" query
-    
+
     let orderBy { Selector = selector; Ascending = asc } (source: IQueryable<'T>) =
         let shape = TypeShape.Create selector.ReturnType
         shape.Accept { new ITypeVisitor<_> with
             member _.Visit<'a>() =
                 selector :?> Selector<'T, 'a>
                 |> if asc then source.OrderBy else source.OrderByDescending }
-    
+
     let thenBy { Selector = selector; Ascending = asc } (source: IOrderedQueryable<'T>) =
         let shape = TypeShape.Create selector.ReturnType
         shape.Accept { new ITypeVisitor<_> with
@@ -180,7 +128,7 @@ type [<Extension>] Linq =
         | Failure(e, _, _) -> failwith e
 
 open type Linq
- 
+
 type Linq with
     [<Extension>]
     static member Apply(source: IQueryable<'TSource>, query: string) : IQueryable<'TSource> =
