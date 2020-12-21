@@ -85,41 +85,45 @@ module Linq =
     let toLambdaExpression (e: Expr) : LambdaExpression = 
         normalize e |> LeafExpressionConverter.QuotationToExpression :?> LambdaExpression
 
-    let private mkPredicate<'T> = mkLambda<'T>() |>> fun x -> x |> toLambdaExpression :?> Predicate<'T>
-    
-    let private mkOrderBy<'T> : Parser<OrderBy list, State> =
-        let asc = stringCIReturn "ASC" true 
-        let desc = stringCIReturn "DESC" false
-        let expr = parse {
-            let! selector = mkLambdaUntyped typeof<'T> .>> spaces |>> toLambdaExpression
-            and! direction = desc <|> asc <|>% true .>> spaces
-            return { Selector = selector; Ascending = direction }
-        }
+    let mkLinqExpression<'T> : Parser<QueryResult<'T>, State> =
+        let orderBy = skipStringCI "ORDER BY" >>. spaces
+        
+        let predicate =
+            fun stream ->
+                // check that there is no predicate expression
+                // query of the form 'order by ...'
+                let orderBy = lookAhead orderBy stream
+                
+                // if so return '_ => true'
+                if orderBy.Status = Ok || stream.IsEndOfStream then
+                    let var = (newParam typeof<'T> stream).Result
+                    Reply(Expr.Lambda(var, <@@ true @@>) |> Expr.Cast)
+                else
+                    let mutable predicate = mkLambda<'T>() stream
+                    
+                    // StateTag = 2u means that only the first parser 
+                    // (property expression parser) was applied and need to merge errors
+                    if predicate.Status <> Ok && stream.StateTag = 2u then 
+                        predicate.Error <- mergeErrors orderBy.Error predicate.Error
 
-        skipStringCI "ORDER BY" >>. spaces >>. sepBy (expr .>> spaces) (pchar ',' .>> spaces)
+                    predicate
+        
+        let orderBy =
+            let asc  = stringCIReturn "ASC" true 
+            let desc = stringCIReturn "DESC" false
 
-    let mkLinqExpression<'T> = parse {
-        let! pred = 
-            let defaultPredicate = parse {
-                let! var = newParam typeof<'T>
-                return Expr.Lambda(var, <@@ true @@>) |> toLambdaExpression :?> Predicate<'T>
+            let expr = parse {
+                let! selector = mkLambdaUntyped typeof<'T> .>> spaces
+                and! direction = desc <|> asc <|>% true .>> spaces
+                return { Selector = toLambdaExpression selector; Ascending = direction }
             }
 
-            fun stream ->
-                let init = stream.State
-                let reply = mkPredicate<'T> stream
-                
-                // if only the empty string is consumed then fall back to the default predicate 'Param_0 => true'
-                if reply.Status <> Ok && stream.StateTag = 2u then
-                    stream.BacktrackTo init
-                    defaultPredicate stream
-                else
-                    reply
-        
-        and! ord  = mkOrderBy<'T> <|>% []
-        
-        return { Predicate = pred; OrderBy = ord }
-    }
+            orderBy >>. sepBy (expr .>> spaces) (pchar ',' .>> spaces) <|>% []
+
+        parse { let! pred = predicate
+                and! ord  = orderBy
+                return { Predicate = downcast toLambdaExpression pred
+                         OrderBy = ord } }
 
     let translate<'T> query = 
         runParserOnString (mkLinqExpression<'T> .>> eof) state "embeddable query" query
