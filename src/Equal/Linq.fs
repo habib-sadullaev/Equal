@@ -99,8 +99,15 @@ module Linq =
         skipStringCI "ORDER BY" >>. spaces >>. sepBy (expr .>> spaces) (pchar ',' .>> spaces)
 
     let private mkLinqExpression<'T> = parse {
-        let! pred = mkPredicate<'T>
+        let! pred = 
+            let defaultPredicate = parse {
+                let! var = newParam typeof<'T>
+                return Expr.Lambda(var, <@@ true  @@>) |> toLambdaExpression :?> Predicate<'T>
+            }
+            attempt mkPredicate<'T> <|> defaultPredicate
+        
         and! ord  = mkOrderBy<'T> <|>% []
+        
         return { Predicate = pred; OrderBy = ord }
     }
 

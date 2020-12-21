@@ -45,13 +45,13 @@ let tests =
                 Expect.equal (string actual) (string expected) (sprintf "%A\n%A" actual expected)
             }
 
-            test "Int > 0 order by Int desc, Int asc" {
+            test "order by Int desc, Int asc" {
                 let actual = 
-                    "Int > 0 order by Int ASC, Int DESC"
+                    "order by Int ASC, Int DESC"
                     |> Linq.CreateQuery<TestRecord> 
 
                 let expected = 
-                    quote <@ fun Param_0 -> Param_0.Int > 0 @>
+                    quote <@ fun Param_0 -> true @>
                     |> orderBy [
                         { Selector = quote <@ fun Param_1 -> Param_1.Int @>; Ascending = true  }
                         { Selector = quote <@ fun Param_2 -> Param_2.Int @>; Ascending = false }
@@ -60,13 +60,13 @@ let tests =
                 Expect.equal (string actual) (string expected) (sprintf "%A\n%A" actual expected)
             }
 
-            test "Int > 0 order by String desc, String asc" {
+            test "order by String desc, String asc" {
                 let actual = 
-                    "Int > 0 order by String desc, String asc"
+                    "order by String desc, String asc"
                     |> Linq.CreateQuery<TestRecord> 
 
                 let expected = 
-                    quote <@ fun Param_0 -> Param_0.Int > 0 @>
+                    quote <@ fun Param_0 -> true @>
                     |> orderBy [
                         { Selector = quote <@ fun Param_1 -> Param_1.String @>; Ascending = false }
                         { Selector = quote <@ fun Param_2 -> Param_2.String @>; Ascending = true  }
@@ -75,13 +75,13 @@ let tests =
                 Expect.equal (string actual) (string expected) (sprintf "%A\n%A" actual expected)
             }
 
-            test "Int > 0 order by String, String desc, String asc, String" {
+            test "order by String, String desc, String asc, String" {
                 let actual = 
-                    "Int > 0 order by String, String desc, String asc, String"
+                    "order by String, String desc, String asc, String"
                     |> Linq.CreateQuery<TestRecord> 
 
                 let expected = 
-                    quote <@ fun Param_0 -> Param_0.Int > 0 @>
+                    quote <@ fun Param_0 -> true @>
                     |> orderBy [
                         { Selector = quote <@ fun Param_1 -> Param_1.String @>; Ascending = true  }
                         { Selector = quote <@ fun Param_2 -> Param_2.String @>; Ascending = false }
