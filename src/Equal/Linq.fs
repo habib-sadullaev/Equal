@@ -98,13 +98,23 @@ module Linq =
 
         skipStringCI "ORDER BY" >>. spaces >>. sepBy (expr .>> spaces) (pchar ',' .>> spaces)
 
-    let private mkLinqExpression<'T> = parse {
+    let mkLinqExpression<'T> = parse {
         let! pred = 
             let defaultPredicate = parse {
                 let! var = newParam typeof<'T>
-                return Expr.Lambda(var, <@@ true  @@>) |> toLambdaExpression :?> Predicate<'T>
+                return Expr.Lambda(var, <@@ true @@>) |> toLambdaExpression :?> Predicate<'T>
             }
-            attempt mkPredicate<'T> <|> defaultPredicate
+
+            fun stream ->
+                let init = stream.State
+                let reply = mkPredicate<'T> stream
+                
+                // if only the empty string is consumed then fall back to the default predicate 'Param_0 => true'
+                if reply.Status <> Ok && stream.StateTag = 2u then
+                    stream.BacktrackTo init
+                    defaultPredicate stream
+                else
+                    reply
         
         and! ord  = mkOrderBy<'T> <|>% []
         

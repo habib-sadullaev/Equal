@@ -15,15 +15,23 @@ let quote(e: Expr<'T -> 'R>) =
     Expr.cleanup e |> Linq.toLambdaExpression :?> Expression<Func<'T, 'R>>
 
 let inline should compare (expected: QueryResult<'T>) str  =
-    test (str |> String.map ^ function '.' -> '_' | c -> c) {
+    let name = sprintf "should parse '%s'" str |> String.map ^ function '.' -> '_' | c -> c
+    test name {
         let actual = Linq.CreateQuery<'T> str
         compare (string actual) (string expected) (sprintf "%A\n%A" actual expected)
     }
 
+let inline shouldFailWith (expected: FailInfo) input =
+    let parser = Linq.mkLinqExpression<TestRecord>
+    let name = sprintf "should fail parsing '%s'" input |> String.map ^ function '.' -> '_' | x -> x
+    test name { failed parser expected input }
+
 [<Tests>]
 let tests =
     testList "linq expression parser" [
-        testList "valid input" [
+        testList "with valid input" [
+            "" |> should equal { Predicate = quote <@ fun (Param_0: TestRecord) -> true @>; OrderBy = [] }
+            
             "String Starts With '' and Int > 0 order by Int > 0 desc, String contains 'aaa'" 
             |> should equal { 
                 Predicate = quote <@ fun Param_0 -> Param_0.String.StartsWith("") && Param_0.Int > 0 @>
@@ -67,5 +75,13 @@ let tests =
                     { Selector = quote <@ fun Param_4 -> Param_4.String @>; Ascending = true  }
                 ]
             }
+        ]
+
+        testList "with invalid input" [
+            "HasValue &&"      |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; "ORDER BY"; "end of input"] }
+            "HasValue ordr bi" |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; "ORDER BY"; "end of input"] }
+            "OptionalEnum &&"  |> shouldFailWith { position = 14L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
+            "String >"         |> shouldFailWith { position =  8L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"] }
+            "TestArray IS "    |> shouldFailWith { position = 11L; errors = ["ALL"; "ANY"; "IS EMPTY"] }
         ]
     ]
