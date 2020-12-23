@@ -18,6 +18,10 @@ let inline should compare expected input =
     let expected = expected
     test name { parsed parser compare (Expr.cleanup expected) input } |> testLabel "with valid input"
 
+let inline shouldFailWith expected input =
+    let name = sprintf "fails parsing '%s'" input |> String.map ^ function '.' -> '_' | x -> x
+    test name { failed parser expected input } |> testLabel "with invalid input"
+
 [<Tests>]
 let tests =
     testList "expression parser" [
@@ -33,4 +37,26 @@ let tests =
         
         "TestArray is empty"     |> should equal <@ fun Param_0 -> Array.isEmpty Param_0.TestArray @> 
         "TestList is empty"      |> should equal <@ fun Param_0 -> List.isEmpty Param_0.TestList @> 
+
+        ""   |> shouldFailWith { position = 1L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
+        " "  |> shouldFailWith { position = 1L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
+        "()" |> shouldFailWith { position = 2L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
+        "z"  |> shouldFailWith { position = 1L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
+        
+        "HasValue &&"       |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; "end of input"] }
+        "OptionalEnum &&"   |> shouldFailWith { position = 14L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
+        "String >"          |> shouldFailWith { position =  8L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"] }
+        "TestArray IS "     |> shouldFailWith { position = 11L; errors = ["ALL"; "ANY"; "IS EMPTY"] }
+        
+        "Int > 0 && String contains 'a'" |> shouldFailWith { position =  9L; errors = [ "AND"; "OR"; "end of input" ] }
+        "NOT Parent.Parent"              |> shouldFailWith { position =  5L; errors = [ "(" ] }
+        "Parent.Parent.HasValue OR"      |> shouldFailWith { position = 26L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
+        "OptionalEnum = one AND"         |> shouldFailWith { position = 23L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
+        
+        "(HasValue AND Parent.Parent.Float = 1"           |> shouldFailWith { position = 38L; errors = [")"; "AND"; "OR"] }
+        "Not (HasValue"                                   |> shouldFailWith { position = 14L; errors = [")"; "AND"; "OR"] }
+        "(String ends with ''"                            |> shouldFailWith { position = 21L; errors = [")"; "AND"; "OR"] }
+        "((String ends with '')"                          |> shouldFailWith { position = 23L; errors = [")"; "AND"; "OR"] }
+        "(Parent.Parent.String ends with ''"              |> shouldFailWith { position = 35L; errors = [")"; "AND"; "OR"] }
+        "Int > 73 and (Parent.Parent.String ends with ''" |> shouldFailWith { position = 48L; errors = [")"; "AND"; "OR"] }
     ]
