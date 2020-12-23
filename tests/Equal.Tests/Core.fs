@@ -79,6 +79,6 @@ let failed parser expected input =
     Expect.equal errs expected.errors
         ^ sprintf "Incorrect error message\nexpected:\n%A\nactual:\n%A\nfull message:\n%A" expected.errors errs msg
 
-let parsed parser expected input =
+let parsed parser compare expected input =
     let actual = validInput parser input
-    Expect.equal actual expected ^ sprintf "expected:\n%A\n  actual:\n%A\n" expected actual
+    compare actual expected ^ sprintf "expected:\n%A\n  actual:\n%A\n" expected actual

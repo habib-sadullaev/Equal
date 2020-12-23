@@ -2,6 +2,7 @@
 
 open FSharp.Quotations
 open Expecto
+open Expect
 open Equal.Expression
 open FParsec
 
@@ -20,11 +21,11 @@ let inline devirtualize (e: Expr<'T>) = devirtualizeUntyped e |> Expr.Cast<'T>
 
 let parser = mkPropChain param
 
-let inline parsedInto expected input =
+let should compare expected input =
     let name = input |> String.map(function '.' -> '_' | x -> x)
-    test name { parsed (parser |>> Expr.Cast) expected input }
+    test name { parsed (parser |>> Expr.Cast) compare (devirtualize expected) input }
 
-let inline failedWith expected input =
+let inline shouldFailWith expected input =
     let name = sprintf "fails parsing '%s'" (input |> String.map ^ function '.' -> '_' | x -> x) 
     let expected = { expected with errors = expected.errors |> List.map ^ sprintf "property of %s" } 
     test name { failed parser expected input }
@@ -33,14 +34,13 @@ let inline failedWith expected input =
 let tests =
     testList "property chain parser" [
         testList "with valid input" [
-            "Int"                   |> parsedInto  <@ (%param).Int @>
-            "Parent.Int"            |> parsedInto  <@ (%param).Parent.Int @>
-            "Parent.Parent.Int"     |> parsedInto  <@ (%param).Parent.Parent.Int @>
-            "Parent.String"         |> parsedInto  <@ (%param).Parent.String @>
-            "Parent.String.Length"  |> parsedInto  <@ (%param).Parent.String.Length @>
-            "Parent.TestArray"      |> parsedInto  <@ (%param).Parent.TestArray @>
-
-            "TestArray.IsFixedSize" |> parsedInto ^ devirtualize <@ (%param).TestArray.IsFixedSize @>
+            "Int"                   |> should equal <@ (%param).Int @>
+            "Parent.Int"            |> should equal <@ (%param).Parent.Int @>
+            "Parent.Parent.Int"     |> should equal <@ (%param).Parent.Parent.Int @>
+            "Parent.String"         |> should equal <@ (%param).Parent.String @>
+            "Parent.String.Length"  |> should equal <@ (%param).Parent.String.Length @>
+            "Parent.TestArray"      |> should equal <@ (%param).Parent.TestArray @>
+            "TestArray.IsFixedSize" |> should equal <@ (%param).TestArray.IsFixedSize @>
         ]
 
         test "IL.virtual call -> call" {
@@ -61,15 +61,14 @@ let tests =
         }
 
         testList "with invalid input" [
-            ""               |> failedWith { position =  1L; errors = [ testType.FullName ] }
-            "Int."           |> failedWith { position =  5L; errors = [ typeof<int>.FullName ] }
-            "Int2"           |> failedWith { position =  1L; errors = [ sprintf "%A" testType ] }
-            "Int2."          |> failedWith { position =  1L; errors = [ sprintf "%O" testType ] }
-            "Parent1."       |> failedWith { position =  1L; errors = [ testType.FullName ] }
-            "Parent."        |> failedWith { position =  8L; errors = [ testType.FullName ] }
-            "Parent.String." |> failedWith { position = 15L; errors = [ typeof<string>.FullName ] }
-            
-            "Parent.Parent.String1.Length" |> failedWith { position = 15L; errors = [ testType.FullName ] }
-            "Parent.Parent.String1.Length."|> failedWith { position = 15L; errors = [ testType.FullName ] }
+            ""                              |> shouldFailWith { position =  1L; errors = [ testType.FullName ] }
+            "Int."                          |> shouldFailWith { position =  5L; errors = [ typeof<int>.FullName ] }
+            "Int2"                          |> shouldFailWith { position =  1L; errors = [ sprintf "%A" testType ] }
+            "Int2."                         |> shouldFailWith { position =  1L; errors = [ sprintf "%O" testType ] }
+            "Parent1."                      |> shouldFailWith { position =  1L; errors = [ testType.FullName ] }
+            "Parent."                       |> shouldFailWith { position =  8L; errors = [ testType.FullName ] }
+            "Parent.String."                |> shouldFailWith { position = 15L; errors = [ typeof<string>.FullName ] }
+            "Parent.Parent.String1.Length"  |> shouldFailWith { position = 15L; errors = [ testType.FullName ] }
+            "Parent.Parent.String1.Length." |> shouldFailWith { position = 15L; errors = [ testType.FullName ] }
         ]
     ]

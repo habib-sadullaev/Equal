@@ -30,10 +30,12 @@ let inline shouldFailWith (expected: FailInfo) input =
 let tests =
     testList "linq expression parser" [
         testList "with valid input" [
-            "" |> should equal { Predicate = quote <@ fun (Param_0: TestRecord) -> true @>; OrderBy = [] }
+            "" |> should equal { 
+                Predicate = quote <@ fun (Param_0: TestRecord) -> true @>
+                OrderBy = []
+            }
             
-            "String Starts With '' and Int > 0 order by Int > 0 desc, String contains 'aaa'" 
-            |> should equal { 
+            "String Starts With '' and Int > 0 order by Int > 0 desc, String contains 'aaa'" |> should equal { 
                 Predicate = quote <@ fun Param_0 -> Param_0.String.StartsWith("") && Param_0.Int > 0 @>
                 OrderBy  = [
                     { Selector = quote <@ fun Param_1 -> Param_1.Int > 0               @>; Ascending = false }
@@ -41,14 +43,12 @@ let tests =
                 ]
             }
 
-            "TestArray Any (String Starts With '') and Int > 0"
-            |> should equal {
+            "TestArray Any (String Starts With '') and Int > 0" |> should equal {
                 Predicate = quote <@ fun Param_0 -> Param_0.TestArray.Any(fun Param_1 -> Param_1.String.StartsWith("")) && Param_0.Int > 0 @>
                 OrderBy = []
             }
 
-            "order by Int ASC, Int DESC"
-            |> should equal {
+            "order by Int ASC, Int DESC" |> should equal {
                 Predicate = quote <@ fun (Param_0: TestRecord) -> true @>
                 OrderBy = [
                     { Selector = quote <@ fun Param_1 -> Param_1.Int @>; Ascending = true  }
@@ -56,8 +56,7 @@ let tests =
                 ]
             }
 
-            "order by String desc, String asc"
-            |> should equal {
+            "order by String desc, String asc" |> should equal {
                 Predicate = quote <@ fun (Param_0: TestRecord) -> true @>
                 OrderBy = [
                     { Selector = quote <@ fun Param_1 -> Param_1.String @>; Ascending = false }
@@ -65,8 +64,7 @@ let tests =
                 ]
             }
 
-            "order by String, String desc, String asc, String"
-            |> should equal {
+            "order by String, String desc, String asc, String" |> should equal {
                 Predicate = quote <@ fun (Param_0: TestRecord) -> true @>
                 OrderBy = [
                     { Selector = quote <@ fun Param_1 -> Param_1.String @>; Ascending = true  }

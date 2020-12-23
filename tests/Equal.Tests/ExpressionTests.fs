@@ -10,40 +10,27 @@ open Equal.Expression
 
 let parser = mkLambda<TestRecord>()
 
-let gatherParams (e: Expr) =
-    let rec aux e acc =
-        match e with
-        | ExprShape.ShapeVar x -> 
-            x :: acc
-        | ExprShape.ShapeLambda (x, _) -> x :: acc
-        | ExprShape.ShapeCombination (_, es) -> [ for e in es do yield! aux e acc ]
-    aux e []
+let equal actual expected message =
+    Expect.equal (string actual) (string expected) message
 
-let inline parsedInto (expected: Expr<TestRecord -> bool>) input =
+let inline should compare expected input =
     let name = sprintf "parses '%s'" input |> String.map ^ function '.' -> '_' | x -> x
-    test name {
-        let expected = expected |> Expr.cleanup
-        let actual = validInput parser input
-        Expect.equal (string actual) (string expected) ^ sprintf "expected:\n%A\n  actual:\n%A\n" expected actual
-    } |> testLabel "with valid input"
-
-let inline failedWith expected input =
-    let name = sprintf "fails parsing '%s'" input |> String.map ^ function '.' -> '_' | x -> x
-    test name { failed parser expected input } |> testLabel "with invalid input"
+    let expected = expected
+    test name { parsed parser compare (Expr.cleanup expected) input } |> testLabel "with valid input"
 
 [<Tests>]
 let tests =
     testList "expression parser" [
-        "Int = 3"                |> parsedInto <@ fun Param_0 -> Param_0.Int = 3 @>
-        "Parent.Int <> 4"        |> parsedInto <@ fun Param_0 -> Param_0.Parent.Int <> 4 @>
-        "Parent.Parent.Int = 5"  |> parsedInto <@ fun Param_0 -> Param_0.Parent.Parent.Int = 5 @>
+        "Int = 3"                |> should equal <@ fun Param_0 -> Param_0.Int = 3 @>
+        "Parent.Int <> 4"        |> should equal <@ fun Param_0 -> Param_0.Parent.Int <> 4 @>
+        "Parent.Parent.Int = 5"  |> should equal <@ fun Param_0 -> Param_0.Parent.Parent.Int = 5 @>
         
-        "TestArray Any(Int = 6)" |> parsedInto <@ fun Param_0 -> Array.exists (fun Param_1 -> Param_1.Int = 6) Param_0.TestArray @>
-        "TestList Any(Int = 7)"  |> parsedInto <@ fun Param_0 -> List.exists (fun Param_1 -> Param_1.Int = 7) Param_0.TestList @>
+        "TestArray Any(Int = 6)" |> should equal <@ fun Param_0 -> Array.exists (fun Param_1 -> Param_1.Int = 6) Param_0.TestArray @>
+        "TestList Any(Int = 7)"  |> should equal <@ fun Param_0 -> List.exists (fun Param_1 -> Param_1.Int = 7) Param_0.TestList @>
         
-        "TestArray all(Int = 8)" |> parsedInto <@ fun Param_0 -> Array.forall (fun Param_1 -> Param_1.Int = 8) Param_0.TestArray @>
-        "TestList all(Int = 9)"  |> parsedInto <@ fun Param_0 -> List.forall (fun Param_1 -> Param_1.Int = 9) Param_0.TestList @>
+        "TestArray all(Int = 8)" |> should equal <@ fun Param_0 -> Array.forall (fun Param_1 -> Param_1.Int = 8) Param_0.TestArray @>
+        "TestList all(Int = 9)"  |> should equal <@ fun Param_0 -> List.forall (fun Param_1 -> Param_1.Int = 9) Param_0.TestList @>
         
-        "TestArray is empty"     |> parsedInto <@ fun Param_0 -> Array.isEmpty Param_0.TestArray @> 
-        "TestList is empty"      |> parsedInto <@ fun Param_0 -> List.isEmpty Param_0.TestList @> 
+        "TestArray is empty"     |> should equal <@ fun Param_0 -> Array.isEmpty Param_0.TestArray @> 
+        "TestList is empty"      |> should equal <@ fun Param_0 -> List.isEmpty Param_0.TestList @> 
     ]
