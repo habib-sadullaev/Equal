@@ -34,7 +34,7 @@ and private mkLambdaAux<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
         parse { let! cmp = stringComparison()
                 and! rhs = mkConst()
                 return wrap <@ fun lhs -> (%cmp) lhs %rhs @> }
-    
+
     | Shape.Enumerable s ->
         s.Accept { new IEnumerableVisitor<_> with
             member _.Visit<'c, 'e when 'c :> 'e seq>() =
@@ -59,7 +59,7 @@ and private mkLambdaAux<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
                 return wrap <@ fun (lhs: 't option) -> lhs.IsSome && (%cmp) lhs.Value @>
             }
         }
-
+    
     | Shape.Nullable s ->
         s.Accept { new INullableVisitor<_> with
             member _.Visit<'t when 't : (new : unit -> 't) and 't :> ValueType and 't : struct>() = parse {
@@ -67,14 +67,14 @@ and private mkLambdaAux<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
                 return wrap <@ fun (lhs: 't Nullable) -> lhs.HasValue && (%cmp) lhs.Value @>
             }
         }
-    
+
     | Shape.Poco _ ->
         parse { 
             let! param = newParam typeof<'T>
             let! body = mkComparison (Expr.Var param)
             return Expr.Lambda(param, body) |> Expr.cast<'T -> bool>
         }
-
+    
     | Shape.Comparison s ->
         s.Accept { new IComparisonVisitor<_> with
             member _.Visit<'t when 't: comparison>() =
@@ -139,22 +139,27 @@ and mkLogicalChain parser =
     operation |>> Expr.cleanup
 
 let mkLambdaUntyped ty = 
-    let param = newParam ty
     fun stream ->
-        let param = (param stream).Result
+        let param = (newParam ty stream).Result
         let var  = Expr.Var param
-        let init = stream.State
-        let mutable reply = Unchecked.defaultof<_>
         let prop = mkPropChain var  |>> fun prop -> Expr.Lambda(param, prop)
         let cmp  = mkComparison var |>> fun cmp  -> Expr.Lambda(param,  cmp)
-        let cmpReply = cmp stream
+        
+        // first try to parse the input using the comparison parser
+        let init = stream.State
+        let mutable reply = cmp stream
 
-        if cmpReply.Status = Ok then
-            reply <- cmpReply
-        else
+        // and if it doesn't work, try to parse it using the property parser
+        if reply.Status <> Ok then
             use substream = stream.CreateSubstream init
             let propReply = prop substream
-            reply <- propReply
-            reply.Error <- mergeErrors propReply.Error cmpReply.Error
+            reply.Result <- propReply.Result
+            reply.Status <- propReply.Status
+
+            // 2u difference between the property and comparison parser
+            // means they parse the same part of the input
+            // and need to combine errors from both of them
+            if stream.StateTag - substream.StateTag = 2u then 
+                reply.Error <- mergeErrors propReply.Error reply.Error
         
         reply

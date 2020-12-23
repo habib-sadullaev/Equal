@@ -42,4 +42,5 @@ let tests =
         "String >"        |> shouldFailWith { position =  8L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"; eof] }
         "OptionalEnum &&" |> shouldFailWith { position = 14L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"; eof] }
         "HasValue &&"     |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; eof] }
+        "(Int > 0"        |> shouldFailWith { position =  9L; errors = [")"; "AND"; "OR"] }
     ]

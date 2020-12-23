@@ -76,16 +76,18 @@ let tests =
         ]
 
         testList "with invalid input" [
-            "HasValue &&"      |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; "ORDER BY"; "end of input"] }
-            "HasValue ordr bi" |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; "ORDER BY"; "end of input"] }
-            "OptionalEnum &&"  |> shouldFailWith { position = 14L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
-            "String >"         |> shouldFailWith { position =  8L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"] }
-            "TestArray IS "    |> shouldFailWith { position = 11L; errors = ["ALL"; "ANY"; "IS EMPTY"] }
-            "HasValue order by"|> shouldFailWith { position = 18L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
-            "Int order by"     |> shouldFailWith { position =  5L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
-            "Int1 order by"    |> shouldFailWith { position =  1L; errors = ["("; "NOT"; "ORDER BY"; "property of Core+TestRecord"] }
-            "order by"         |> shouldFailWith { position =  9L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
-            "Not (HasValue"    |> shouldFailWith { position = 14L; errors = [")"; "AND"; "OR"] }
+            "HasValue &&"       |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; "ORDER BY"; "end of input"] }
+            "HasValue ordr bi"  |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; "ORDER BY"; "end of input"] }
+            "OptionalEnum &&"   |> shouldFailWith { position = 14L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
+            "String >"          |> shouldFailWith { position =  8L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"] }
+            "TestArray IS "     |> shouldFailWith { position = 11L; errors = ["ALL"; "ANY"; "IS EMPTY"] }
+            "HasValue order by" |> shouldFailWith { position = 18L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
+            "Int order by"      |> shouldFailWith { position =  5L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
+            "Int1 order by"     |> shouldFailWith { position =  1L; errors = ["("; "NOT"; "ORDER BY"; "property of Core+TestRecord"] }
+            "order by"          |> shouldFailWith { position =  9L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
+            
+            "Not (HasValue"        |> shouldFailWith { position = 14L; errors = [")"; "AND"; "OR"] }
+            "(String ends with ''" |> shouldFailWith { position = 21L; errors = [")"; "AND"; "OR"] }
             
             "Parent.Parent.HasValue and String contains 'aaa' order by Int asx" |> shouldFailWith { 
                 position = 63L
