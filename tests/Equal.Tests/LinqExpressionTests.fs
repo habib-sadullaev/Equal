@@ -30,10 +30,7 @@ let inline shouldFailWith (expected: FailInfo) input =
 let tests =
     testList "linq expression parser" [
         testList "with valid input" [
-            "" |> should equal { 
-                Predicate = quote <@ fun (Param_0: TestRecord) -> true @>
-                OrderBy = []
-            }
+            "" |> should equal { Predicate = quote <@ fun (Param_0: TestRecord) -> true @>; OrderBy = [] }
             
             "String Starts With '' and Int > 0 order by Int > 0 desc, String contains 'aaa'" |> should equal { 
                 Predicate = quote <@ fun Param_0 -> Param_0.String.StartsWith("") && Param_0.Int > 0 @>
@@ -86,8 +83,11 @@ let tests =
             "Int1 order by"     |> shouldFailWith { position =  1L; errors = ["("; "NOT"; "ORDER BY"; "property of Core+TestRecord"] }
             "order by"          |> shouldFailWith { position =  9L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
             
-            "Not (HasValue"        |> shouldFailWith { position = 14L; errors = [")"; "AND"; "OR"] }
-            "(String ends with ''" |> shouldFailWith { position = 21L; errors = [")"; "AND"; "OR"] }
+            "Not (HasValue"                                   |> shouldFailWith { position = 14L; errors = [")"; "AND"; "OR"] }
+            "(String ends with ''"                            |> shouldFailWith { position = 21L; errors = [")"; "AND"; "OR"] }
+            "((String ends with '')"                          |> shouldFailWith { position = 23L; errors = [")"; "AND"; "OR"] }
+            "(Parent.Parent.String ends with ''"              |> shouldFailWith { position = 35L; errors = [")"; "AND"; "OR"] }
+            "Int > 73 and (Parent.Parent.String ends with ''" |> shouldFailWith { position = 48L; errors = [")"; "AND"; "OR"] }
             
             "Parent.Parent.HasValue and String contains 'aaa' order by Int asx" |> shouldFailWith { 
                 position = 63L
