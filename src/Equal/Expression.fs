@@ -107,22 +107,35 @@ and mkComparison param =
     |> mkLogicalChain
 
 and mkPropChain (instance: Expr) : Parser<Expr, State> =
-    let error = Reply(Error, expectedString ^ sprintf "property of %A" instance.Type)
+    let ty = instance.Type
+    
+    let expectedProps =
+        match ty.GetProperties() with
+        | [||]      -> 
+            Reply(Error, unexpectedString ^ sprintf "%A has no props" ty)
+
+        | propInfos ->
+            let mutable errors = NoErrorMessages
+            for p in propInfos do 
+                if p.GetIndexParameters().Length = 0 then 
+                    errors <- mergeErrors errors ^ expectedString p.Name 
+            Reply(Error, errors)
+
     fun stream ->
         let initState = stream.State
         let label = ident stream
         match label.Status with
         | Ok ->
-            match instance.Type.GetProperty label.Result with
+            match ty.GetProperty label.Result with
             | null ->
                 stream.BacktrackTo initState
-                error
+                expectedProps
 
             | prop ->
                 let next = Expr.PropertyGet(instance, prop)
                 if stream.Skip '.' then mkPropChain next stream else Reply next
 
-        | _ -> error
+        | _ -> expectedProps
 
 and mkLogicalChain parser =
     let mkOperation operator operand =

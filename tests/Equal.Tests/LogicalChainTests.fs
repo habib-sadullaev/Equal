@@ -54,8 +54,8 @@ let tests =
         " "         |> shouldFailWith { position = 1L; errors = ["("; "A"; "B"; "C"; "D"; "NOT"] }
         "()"        |> shouldFailWith { position = 2L; errors = ["("; "A"; "B"; "C"; "D"; "NOT"] }
         "z"         |> shouldFailWith { position = 1L; errors = ["("; "A"; "B"; "C"; "D"; "NOT"] }
-        "A && B"    |> shouldFailWith { position = 3L; errors = [ "AND"; "OR"; "end of input" ] }
-        "NOT A"     |> shouldFailWith { position = 5L; errors = [ "(" ] }
+        "A && B"    |> shouldFailWith { position = 3L; errors = ["AND"; "OR"; "end of input"] }
+        "NOT A"     |> shouldFailWith { position = 5L; errors = ["("] }
         "A OR"      |> shouldFailWith { position = 5L; errors = ["("; "A"; "B"; "C"; "D"; "NOT"] }
         "A AND"     |> shouldFailWith { position = 6L; errors = ["("; "A"; "B"; "C"; "D"; "NOT"] }
         "(A AND B"  |> shouldFailWith { position = 9L; errors = [")"; "AND"; "OR"] }

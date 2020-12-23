@@ -24,11 +24,13 @@ type TestRecord =
       TestArray: TestRecord []
       TestList: TestRecord list }
 
-let testType = typeof<TestRecord>
-let x = Var("x", testType)
+let x = Var("x", typeof<TestRecord>)
 let param = x |> Expr.Var |> Expr.Cast<TestRecord>
 
 let inline byteEnum<'T when 'T : enum<byte> > (value: byte) : 'T = LanguagePrimitives.EnumOfValue value
+
+let propsof<'T> = List.sort [ for p in typeof<'T>.GetProperties() do if p.GetIndexParameters().Length = 0 then p.Name ]
+let noProps<'T> = [sprintf "%O has no props" typeof<'T>]
 
 let typeName<'T> =
     let ty = typeof<'T>
@@ -56,6 +58,7 @@ let private parse parser input =
               | Expected msg 
               | ExpectedString msg 
               | ExpectedStringCI msg -> msg
+              | UnexpectedString msg -> msg // no props message
               | NestedError (_, _, errs) -> yield! gatherErrs errs
               | _ -> ()
             ] |> List.distinct |> List.sort
@@ -76,7 +79,7 @@ let failed parser expected input =
     let msg, { position = pos; errors = errs } = invalidInput parser input
     Expect.equal pos expected.position
         ^ sprintf "incorrect error position\nexpected: '%d'\n  actual: '%d'" expected.position pos
-    Expect.equal errs expected.errors
+    Expect.equal errs (List.sort expected.errors)
         ^ sprintf "Incorrect error message\nexpected:\n%A\nactual:\n%A\nfull message:\n%A" expected.errors errs msg
 
 let parsed parser compare expected input =

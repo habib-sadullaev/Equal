@@ -9,7 +9,6 @@ let parser = mkComparison param
 
 let inline should compare expected input =
     let name = sprintf "parses '%s'" input |> String.map ^ function '.' -> '_' | x -> x
-    let expected = expected
     test name { parsed (parser |>> Expr.Cast) compare expected input } |> testLabel "with valid input"
 
 let inline shouldFailWith expected input =

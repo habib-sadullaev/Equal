@@ -1,6 +1,5 @@
 ﻿module ExpressionTests
 
-open FSharp.Quotations
 open Expecto
 open FParsec
 open TypeShape.Core.StagingExtensions
@@ -22,6 +21,8 @@ let inline shouldFailWith expected input =
     let name = sprintf "fails parsing '%s'" input |> String.map ^ function '.' -> '_' | x -> x
     test name { failed parser expected input } |> testLabel "with invalid input"
 
+let [<Literal>] eof = "end of input"
+
 [<Tests>]
 let tests =
     testList "expression parser" [
@@ -38,20 +39,20 @@ let tests =
         "TestArray is empty"     |> should equal <@ fun Param_0 -> Array.isEmpty Param_0.TestArray @> 
         "TestList is empty"      |> should equal <@ fun Param_0 -> List.isEmpty Param_0.TestList @> 
 
-        ""   |> shouldFailWith { position = 1L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
-        " "  |> shouldFailWith { position = 1L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
-        "()" |> shouldFailWith { position = 2L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
-        "z"  |> shouldFailWith { position = 1L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
+        ""   |> shouldFailWith { position = 1L; errors = ["("; "NOT"; yield! propsof<TestRecord>] }
+        " "  |> shouldFailWith { position = 1L; errors = ["("; "NOT"; yield! propsof<TestRecord>] }
+        "()" |> shouldFailWith { position = 2L; errors = ["("; "NOT"; yield! propsof<TestRecord>] }
+        "z"  |> shouldFailWith { position = 1L; errors = ["("; "NOT"; yield! propsof<TestRecord>] }
         
-        "HasValue &&"       |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; "end of input"] }
+        "HasValue &&"       |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; eof] }
         "OptionalEnum &&"   |> shouldFailWith { position = 14L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
         "String >"          |> shouldFailWith { position =  8L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"] }
         "TestArray IS "     |> shouldFailWith { position = 11L; errors = ["ALL"; "ANY"; "IS EMPTY"] }
         
-        "Int > 0 && String contains 'a'" |> shouldFailWith { position =  9L; errors = [ "AND"; "OR"; "end of input" ] }
+        "Int > 0 && String contains 'a'" |> shouldFailWith { position =  9L; errors = [ "AND"; "OR"; eof ] }
         "NOT Parent.Parent"              |> shouldFailWith { position =  5L; errors = [ "(" ] }
-        "Parent.Parent.HasValue OR"      |> shouldFailWith { position = 26L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
-        "OptionalEnum = one AND"         |> shouldFailWith { position = 23L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
+        "Parent.Parent.HasValue OR"      |> shouldFailWith { position = 26L; errors = ["("; "NOT"; yield! propsof<TestRecord>] }
+        "OptionalEnum = one AND"         |> shouldFailWith { position = 23L; errors = ["("; "NOT"; yield! propsof<TestRecord>] }
         
         "(HasValue AND Parent.Parent.Float = 1"           |> shouldFailWith { position = 38L; errors = [")"; "AND"; "OR"] }
         "Not (HasValue"                                   |> shouldFailWith { position = 14L; errors = [")"; "AND"; "OR"] }

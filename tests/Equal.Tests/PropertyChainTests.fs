@@ -27,7 +27,6 @@ let should compare expected input =
 
 let inline shouldFailWith expected input =
     let name = sprintf "fails parsing '%s'" (input |> String.map ^ function '.' -> '_' | x -> x) 
-    let expected = { expected with errors = expected.errors |> List.map ^ sprintf "property of %s" } 
     test name { failed parser expected input }
 
 [<Tests>]
@@ -45,8 +44,8 @@ let tests =
 
         test "IL.virtual call -> call" {
             let actual = 
-                let expr1 = Expr.PropertyGet(param, testType.GetProperty("TestArray"))
-                let expr2 = Expr.PropertyGet(param, testType.GetProperty("TestArray"))
+                let expr1 = Expr.PropertyGet(param, typeof<TestRecord>.GetProperty("TestArray"))
+                let expr2 = Expr.PropertyGet(param, typeof<TestRecord>.GetProperty("TestArray"))
 
                 let expr1' = Expr.Cast ^ Expr.PropertyGet(expr1, typeof<TestRecord array>.GetProperty "IsFixedSize")
                 let expr2' = Expr.Cast ^ Expr.PropertyGet(expr2, typeof<TestRecord array>.GetProperty "Length")
@@ -61,14 +60,14 @@ let tests =
         }
 
         testList "with invalid input" [
-            ""                              |> shouldFailWith { position =  1L; errors = [ testType.FullName ] }
-            "Int."                          |> shouldFailWith { position =  5L; errors = [ typeof<int>.FullName ] }
-            "Int2"                          |> shouldFailWith { position =  1L; errors = [ sprintf "%A" testType ] }
-            "Int2."                         |> shouldFailWith { position =  1L; errors = [ sprintf "%O" testType ] }
-            "Parent1."                      |> shouldFailWith { position =  1L; errors = [ testType.FullName ] }
-            "Parent."                       |> shouldFailWith { position =  8L; errors = [ testType.FullName ] }
-            "Parent.String."                |> shouldFailWith { position = 15L; errors = [ typeof<string>.FullName ] }
-            "Parent.Parent.String1.Length"  |> shouldFailWith { position = 15L; errors = [ testType.FullName ] }
-            "Parent.Parent.String1.Length." |> shouldFailWith { position = 15L; errors = [ testType.FullName ] }
+            ""                              |> shouldFailWith { position =  1L; errors = propsof<TestRecord> }
+            "Int."                          |> shouldFailWith { position =  5L; errors = noProps<int> }
+            "Int2"                          |> shouldFailWith { position =  1L; errors = propsof<TestRecord> }
+            "Int2."                         |> shouldFailWith { position =  1L; errors = propsof<TestRecord> }
+            "Parent1."                      |> shouldFailWith { position =  1L; errors = propsof<TestRecord> }
+            "Parent."                       |> shouldFailWith { position =  8L; errors = propsof<TestRecord> }
+            "Parent.String."                |> shouldFailWith { position = 15L; errors = propsof<string> }
+            "Parent.Parent.String1.Length"  |> shouldFailWith { position = 15L; errors = propsof<TestRecord> }
+            "Parent.Parent.String1.Length." |> shouldFailWith { position = 15L; errors = propsof<TestRecord> }
         ]
     ]
