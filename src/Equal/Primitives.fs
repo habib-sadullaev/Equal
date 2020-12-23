@@ -8,7 +8,6 @@ let parenthesize parser =
     parser
     |> between spaces spaces
     |> between (skipChar '(') (skipChar ')')
-    |> attempt
 
 [<GeneralizableValue>]
 let literal<'u> : Parser<string, 'u> =

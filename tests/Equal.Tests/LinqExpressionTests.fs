@@ -85,6 +85,7 @@ let tests =
             "Int order by"     |> shouldFailWith { position =  5L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
             "Int1 order by"    |> shouldFailWith { position =  1L; errors = ["("; "NOT"; "ORDER BY"; "property of Core+TestRecord"] }
             "order by"         |> shouldFailWith { position =  9L; errors = ["("; "NOT"; "property of Core+TestRecord"] }
+            "Not (HasValue"    |> shouldFailWith { position = 14L; errors = [")"; "AND"; "OR"] }
             
             "Parent.Parent.HasValue and String contains 'aaa' order by Int asx" |> shouldFailWith { 
                 position = 63L

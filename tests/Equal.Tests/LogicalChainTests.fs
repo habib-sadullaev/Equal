@@ -50,12 +50,13 @@ let tests =
         "NOT(A OR B) AND (C OR D)"      |> should equal <@ not(%A || %B) && (%C || %D) @>
         "NOT(NOT(A OR B) AND (C OR D))" |> should equal <@ not(not(%A || %B) && (%C || %D)) @>
 
-        ""       |> shouldFailWith { position = 1L; errors = "(" :: List.map string [ 'A' .. 'D' ] @ [ "NOT" ] }
-        " "      |> shouldFailWith { position = 1L; errors = "(" :: List.map string [ 'A' .. 'D' ] @ [ "NOT" ] }
-        "()"     |> shouldFailWith { position = 1L; errors = "(" :: List.map string [ 'A' .. 'D' ] @ [ "NOT" ] }
-        "z"      |> shouldFailWith { position = 1L; errors = "(" :: List.map string [ 'A' .. 'D' ] @ [ "NOT" ] }
-        "A && B" |> shouldFailWith { position = 3L; errors = [ "AND"; "OR"; "end of input" ] }
-        "NOT A"  |> shouldFailWith { position = 5L; errors = [ "(" ] }
-        "A OR"   |> shouldFailWith { position = 5L; errors = "(" :: List.map string [ 'A' .. 'D' ] @ [ "NOT" ] }
-        "A AND"  |> shouldFailWith { position = 6L; errors = "(" :: List.map string [ 'A' .. 'D' ] @ [ "NOT" ] }
+        ""          |> shouldFailWith { position = 1L; errors = ["("; "A"; "B"; "C"; "D"; "NOT"] }
+        " "         |> shouldFailWith { position = 1L; errors = ["("; "A"; "B"; "C"; "D"; "NOT"] }
+        "()"        |> shouldFailWith { position = 2L; errors = ["("; "A"; "B"; "C"; "D"; "NOT"] }
+        "z"         |> shouldFailWith { position = 1L; errors = ["("; "A"; "B"; "C"; "D"; "NOT"] }
+        "A && B"    |> shouldFailWith { position = 3L; errors = [ "AND"; "OR"; "end of input" ] }
+        "NOT A"     |> shouldFailWith { position = 5L; errors = [ "(" ] }
+        "A OR"      |> shouldFailWith { position = 5L; errors = ["("; "A"; "B"; "C"; "D"; "NOT"] }
+        "A AND"     |> shouldFailWith { position = 6L; errors = ["("; "A"; "B"; "C"; "D"; "NOT"] }
+        "(A AND B"  |> shouldFailWith { position = 9L; errors = [")"; "AND"; "OR"] }
     ]

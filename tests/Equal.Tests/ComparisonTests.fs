@@ -51,4 +51,5 @@ let tests =
         "Parent.Parent.Int" |> shouldFailWith { position = 18L; errors = [ "<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN" ] }
         "NullableFloat"     |> shouldFailWith { position = 14L; errors = [ "<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN" ] }
         "OptionalString"    |> shouldFailWith { position = 15L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"] }
+        "(HasValue"         |> shouldFailWith { position = 10L; errors = [")"; "AND"; "OR"] }
     ]

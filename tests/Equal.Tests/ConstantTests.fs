@@ -71,16 +71,16 @@ let tests =
         ]
 
         testListOf "()" [
-            shouldFailWith<string seq>   { position = 1L; errors = [ "'" ] }
-            shouldFailWith<string list>  { position = 1L; errors = [ "'" ] }
-            shouldFailWith<string array> { position = 1L; errors = [ "'" ] }
+            shouldFailWith<string seq>   { position = 2L; errors = [ "'" ] }
+            shouldFailWith<string list>  { position = 2L; errors = [ "'" ] }
+            shouldFailWith<string array> { position = 2L; errors = [ "'" ] }
 
-            shouldFailWith<int seq>   { position = 1L; errors = [ "integer number (32-bit, signed)" ] }
-            shouldFailWith<int list>  { position = 1L; errors = [ "integer number (32-bit, signed)" ] }
-            shouldFailWith<int array> { position = 1L; errors = [ "integer number (32-bit, signed)" ] }
+            shouldFailWith<int seq>   { position = 2L; errors = [ "integer number (32-bit, signed)" ] }
+            shouldFailWith<int list>  { position = 2L; errors = [ "integer number (32-bit, signed)" ] }
+            shouldFailWith<int array> { position = 2L; errors = [ "integer number (32-bit, signed)" ] }
             
-            shouldFailWith<ResizeArray<string>> { position = 1L; errors = [ "'" ] }
-            shouldFailWith<ResizeArray<int>>    { position = 1L; errors = [ "integer number (32-bit, signed)" ] }
+            shouldFailWith<ResizeArray<string>> { position = 2L; errors = [ "'" ] }
+            shouldFailWith<ResizeArray<int>>    { position = 2L; errors = [ "integer number (32-bit, signed)" ] }
         ]
 
         testListOf "" [
