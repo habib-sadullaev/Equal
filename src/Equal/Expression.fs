@@ -142,7 +142,7 @@ let mkLambdaUntyped ty =
     fun stream ->
         let param = (newParam ty stream).Result
         let var  = Expr.Var param
-        let prop = mkPropChain var  |>> fun prop -> Expr.Lambda(param, prop)
+        let prop = mkPropChain var .>> eof |>> fun prop -> Expr.Lambda(param, prop)
         let cmp  = mkComparison var |>> fun cmp  -> Expr.Lambda(param,  cmp)
         
         // first try to parse the input using the comparison parser
