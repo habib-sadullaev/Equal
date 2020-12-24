@@ -59,4 +59,6 @@ let tests =
         "A OR"      |> shouldFailWith { position = 5L; errors = ["("; "A"; "B"; "C"; "D"; "NOT"] }
         "A AND"     |> shouldFailWith { position = 6L; errors = ["("; "A"; "B"; "C"; "D"; "NOT"] }
         "(A AND B"  |> shouldFailWith { position = 9L; errors = [")"; "AND"; "OR"] }
+        "A andB"    |> shouldFailWith { position = 3L; errors = ["AND"; "OR"; "end of input"] }
+        "A orB"     |> shouldFailWith { position = 3L; errors = ["AND"; "OR"; "end of input"] }
     ]

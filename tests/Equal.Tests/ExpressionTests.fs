@@ -44,10 +44,12 @@ let tests =
         "()" |> shouldFailWith { position = 2L; errors = ["("; "NOT"; yield! propsof<TestRecord>] }
         "z"  |> shouldFailWith { position = 1L; errors = ["("; "NOT"; yield! propsof<TestRecord>] }
         
-        "HasValue &&"       |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; eof] }
-        "OptionalEnum &&"   |> shouldFailWith { position = 14L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
-        "String >"          |> shouldFailWith { position =  8L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"] }
-        "TestArray IS "     |> shouldFailWith { position = 11L; errors = ["ALL"; "ANY"; "IS EMPTY"] }
+        "HasValue &&"         |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; eof] }
+        "Int > 0 andHasValue" |> shouldFailWith { position =  9L; errors = ["AND"; "OR"; "end of input"] }
+        "Int > 0 orHasValue"  |> shouldFailWith { position =  9L; errors = ["AND"; "OR"; "end of input"] }
+        "OptionalEnum &&"     |> shouldFailWith { position = 14L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
+        "String >"            |> shouldFailWith { position =  8L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"] }
+        "TestArray IS "       |> shouldFailWith { position = 11L; errors = ["ALL"; "ANY"; "IS EMPTY"] }
         
         "Int > 0 && String contains 'a'" |> shouldFailWith { position =  9L; errors = [ "AND"; "OR"; eof ] }
         "NOT Parent.Parent"              |> shouldFailWith { position =  5L; errors = [ "(" ] }

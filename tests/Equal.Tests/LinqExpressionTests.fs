@@ -75,16 +75,21 @@ let tests =
         ]
 
         testList "with invalid input" [
-            "HasValue &&"       |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; "ORDER BY"; eof] }
-            "HasValue ordr bi"  |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; "ORDER BY"; eof] }
-            "OptionalEnum &&"   |> shouldFailWith { position = 14L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
-            "String >"          |> shouldFailWith { position =  8L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"] }
-            "TestArray IS "     |> shouldFailWith { position = 11L; errors = ["ALL"; "ANY"; "IS EMPTY"] }
-            "HasValue order by" |> shouldFailWith { position = 18L; errors = ["("; "NOT"; yield! propsof<TestRecord>] }
-            "Int order by"      |> shouldFailWith { position =  5L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
-            "Int1 order by"     |> shouldFailWith { position =  1L; errors = ["("; "NOT"; "ORDER BY"; yield! propsof<TestRecord>] }
-            "order by"          |> shouldFailWith { position =  9L; errors = ["("; "NOT"; yield! propsof<TestRecord>] }
+            "TestArray IS " |> shouldFailWith { position = 11L; errors = ["ALL"; "ANY"; "IS EMPTY"] }
+            "String >"      |> shouldFailWith { position =  8L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"] }
             
+            "OptionalEnum &&" |> shouldFailWith { position = 14L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
+            "Int order by"    |> shouldFailWith { position =  5L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
+            
+            "HasValue order by" |> shouldFailWith { position = 18L; errors = ["("; "NOT"; yield! propsof<TestRecord>] }
+            "order by"          |> shouldFailWith { position =  9L; errors = ["("; "NOT"; yield! propsof<TestRecord>] }
+            "Int1 order by"     |> shouldFailWith { position =  1L; errors = ["("; "NOT"; "ORDER BY"; yield! propsof<TestRecord>] }
+            
+            "HasValue &&"                   |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; "ORDER BY"; eof] }
+            "HasValue ordr bi"              |> shouldFailWith { position = 10L; errors = ["AND"; "OR"; "ORDER BY"; eof] }
+            "Int > 0 or HasValue andString" |> shouldFailWith { position = 21L; errors = ["AND"; "OR"; "ORDER BY"; eof] }
+            "Int > 0 and HasValue orString" |> shouldFailWith { position = 22L; errors = ["AND"; "OR"; "ORDER BY"; eof] }
+
             "Not (HasValue"                                   |> shouldFailWith { position = 14L; errors = [")"; "AND"; "OR"] }
             "(String ends with ''"                            |> shouldFailWith { position = 21L; errors = [")"; "AND"; "OR"] }
             "((String ends with '')"                          |> shouldFailWith { position = 23L; errors = [")"; "AND"; "OR"] }
