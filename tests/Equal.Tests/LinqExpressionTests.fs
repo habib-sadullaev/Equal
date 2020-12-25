@@ -1,30 +1,25 @@
 ﻿module QueryParserTests
 
-open System
 open System.Linq
-open FSharp.Quotations
 open Equal.Linq
-open TypeShape.Core.StagingExtensions
 open Expecto
-open System.Linq.Expressions
 open Expect
 
 #nowarn "49"
 
-let quote(e: Expr<'T -> 'R>) = 
-    Expr.cleanup e |> Linq.toLambdaExpression :?> Expression<Func<'T, 'R>>
-
-let inline should compare (expected: QueryResult<'T>) str  =
-    let name = sprintf "should parse '%s'" str |> String.map ^ function '.' -> '_' | c -> c
+let inline should compare (expected: QueryResult<'T>) input  =
+    let name = sprintf "should parse '%s'" input |> String.map ^ function '.' -> '_' | c -> c
     test name {
-        let actual = Linq.CreateQuery<'T> str
+        let actual = EmbeddedQuery.CreateQuery<'T> input
         compare (string actual) (string expected) (sprintf "%A\n%A" actual expected)
     }
 
 let inline shouldFailWith (expected: FailInfo) input =
-    let parser = Linq.mkLinqExpression<TestRecord>
+    let parser = EmbeddedQuery.mkLinqExpression<TestRecord>
     let name = sprintf "should fail parsing '%s'" input |> String.map ^ function '.' -> '_' | x -> x
     test name { failed parser expected input }
+
+let quote = EmbeddedQuery.quote
 
 let [<Literal>] eof = "end of input"
 
@@ -32,7 +27,10 @@ let [<Literal>] eof = "end of input"
 let tests =
     testList "linq expression parser" [
         testList "with valid input" [
-            "" |> should equal { Predicate = quote <@ fun (Param_0: TestRecord) -> true @>; OrderBy = [] }
+            "" |> should equal { 
+                Predicate = quote <@ fun (Param_0: TestRecord) -> true @>
+                OrderBy = [] 
+            }
             
             "String Starts With '' and Int > 0 order by Int > 0 desc, String contains 'aaa'" |> should equal { 
                 Predicate = quote <@ fun Param_0 -> Param_0.String.StartsWith("") && Param_0.Int > 0 @>

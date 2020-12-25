@@ -1,5 +1,15 @@
 ﻿[<AutoOpen>]
+#if TESTS_FRIENDLY 
+// change the 'Core' module accessibility to public 
+// to prevent compilation errors because it has inline functions
 module Core
+
+//... and make the internals visible to tests
+module AssemblyInfo =
+    [<assembly: System.Runtime.CompilerServices.InternalsVisibleTo "Equal.Tests">] do()
+#else
+module internal Core
+#endif
 
 open System
 open FSharp.Quotations
@@ -7,13 +17,13 @@ open FParsec
 
 let inline (^) f x = f x
 
-let unsupported (ty: Type) = fail ^ sprintf "unsupported type %A" ty
+let inline unsupported (ty: Type) = failwithf "unsupported type %A" ty
 
 let inline constExpr (x: 'a) = x |> Expr.Value |> Expr.Cast<'a>
 
 type State = int
 
-type Parser<'T> = FParsec.Primitives.Parser<Expr<'T>, State>
+type Parser<'T> = Primitives.Parser<Expr<'T>, State>
 
 let state : State = 0
 

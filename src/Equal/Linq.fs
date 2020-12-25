@@ -10,20 +10,20 @@ open FParsec
 open TypeShape.Core
 open Equal.Expression
 
-type private Predicate<'T>    = Expression<Func<'T, bool>>
 type private Selector<'T, 'R> = Expression<Func<'T, 'R>>
+type private Predicate<'T>    = Selector<'T, bool>
 
 type [<Struct>] OrderBy         = { Selector: LambdaExpression; Ascending: bool }
 type [<Struct>] QueryResult<'T> = { Predicate: Predicate<'T>; OrderBy: OrderBy list }
 
 [<RequireQualifiedAccess>]
-module Linq =
-    let private (|TypeShape|) (e: Expr) = TypeShape.Create e.Type
+module private Linq =
+    let (|TypeShape|) (e: Expr) = TypeShape.Create e.Type
 
-    let private (|MethodCall|_|) m =
+    let (|MethodCall|_|) m =
         function DerivedPatterns.SpecificCall m (None, _, args) -> Some args | _ -> None
 
-    let rec private normalize (e: Expr) : Expr =
+    let rec normalize (e: Expr) : Expr =
         match e with
         | MethodCall <@ Array.contains @> [elem & TypeShape s; source] ->
             s.Accept { 
@@ -63,7 +63,7 @@ module Linq =
     
         | ExprShape.ShapeVar _ -> e
     
-        | ExprShape.ShapeLambda(_, Patterns.Lambda _) -> failwithf "unsupported type %A" e.Type
+        | ExprShape.ShapeLambda(_, Patterns.Lambda _) -> unsupported e.Type
     
         | ExprShape.ShapeLambda(x, e) ->
             let dom = TypeShape.Create x.Type
@@ -142,18 +142,24 @@ module Linq =
                 selector :?> Selector<'T, 'a>
                 |> if asc then source.ThenBy else source.ThenByDescending }
 
-type [<Extension>] Linq =
+#if TESTS_FRIENDLY
+[<RequireQualifiedAccess>]
+module internal EmbeddedQuery =
+    open TypeShape.Core.StagingExtensions
+    let quote(e: Expr<'T -> 'R>) = Expr.cleanup e |> Linq.toLambdaExpression :?> Expression<Func<'T, 'R>>
+
+    let mkLinqExpression<'T> = Linq.mkLinqExpression<'T>
+#endif
+
+type [<Extension>] EmbeddedQuery =
     static member CreateQuery<'T>(query: string) =
         match Linq.translate<'T> query with
         | Success(v, _, _) -> v
         | Failure(e, _, _) -> failwith e
 
-open type Linq
-
-type Linq with
     [<Extension>]
     static member Apply(source: IQueryable<'TSource>, query: string) : IQueryable<'TSource> =
-        let { Predicate = predicate; OrderBy = orderBy } = CreateQuery<'TSource> query
+        let { Predicate = predicate; OrderBy = orderBy } = EmbeddedQuery.CreateQuery<'TSource> query
         source.Where(predicate).OrderBy(orderBy)
     
     [<Extension>]

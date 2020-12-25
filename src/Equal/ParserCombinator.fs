@@ -1,6 +1,6 @@
 ﻿//replaces the default parse CE
 [<AutoOpen>]
-module FParsec.Primitives
+module internal FParsec.Primitives
 
 [<Sealed>]
 type ParserCombinator() =

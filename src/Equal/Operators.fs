@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module Operators
+module internal Operators
 
 open System
 open FSharp.Quotations

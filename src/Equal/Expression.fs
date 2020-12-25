@@ -1,4 +1,4 @@
-﻿module Equal.Expression
+﻿module internal Equal.Expression
 
 open System
 open FSharp.Quotations

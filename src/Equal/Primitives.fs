@@ -1,5 +1,5 @@
 ﻿[<AutoOpen>]
-module Equal.Primitives
+module internal Equal.Primitives
 
 open System
 open FParsec

@@ -1,5 +1,5 @@
 ﻿//replaces the default unlambda and unlet implementations with the fixed ones
-module TypeShape.Core
+module internal TypeShape.Core
 
 module StagingExtensions =
 

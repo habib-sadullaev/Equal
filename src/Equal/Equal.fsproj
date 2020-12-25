@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net462;netstandard2.0</TargetFrameworks>
+    <DefineConstants>$(DefineConstants);TESTS_FRIENDLY</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Prototype.fs" />

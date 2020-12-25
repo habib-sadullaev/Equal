@@ -1,4 +1,4 @@
-﻿module Equal.Constant
+﻿module internal Equal.Constant
 
 open System
 open FParsec
