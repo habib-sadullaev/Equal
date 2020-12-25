@@ -56,9 +56,9 @@ let private parse parser input =
             [ for err in errs |> ErrorMessageList.ToSortedArray do
               match err with
               | Expected msg 
+              | Unexpected msg 
               | ExpectedString msg 
-              | ExpectedStringCI msg -> msg
-              | UnexpectedString msg -> msg // no props message
+              | ExpectedStringCI msg -> msg // no props message
               | NestedError (_, _, errs) -> yield! gatherErrs errs
               | _ -> ()
             ] |> List.distinct |> List.sort

@@ -112,7 +112,7 @@ and mkPropChain (instance: Expr) : Parser<Expr, State> =
     let expectedProps =
         match ty.GetProperties() with
         | [||]      -> 
-            Reply(Error, unexpectedString ^ sprintf "%A has no props" ty)
+            Reply(Error, unexpected ^ sprintf "%A has no props" ty)
 
         | propInfos ->
             let mutable errors = NoErrorMessages
