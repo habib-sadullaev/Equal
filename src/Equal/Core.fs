@@ -5,18 +5,7 @@ open System
 open FSharp.Quotations
 open FParsec
 
-#nowarn "86"
-#nowarn "42"
-
-let (^) f x = f x
-
-let inline (=) (x: 'T) (y: 'T) =
-    if Type.(<>)(typeof<'T>, typeof<Type>) then x = y else
-    Type.(=)((# "" x : Type #), (# "" y : Type #))
-
-let inline (<>) (x: 'T) (y: 'T) =
-    if Type.(<>)(typeof<'T>, typeof<Type>) then x <> y else
-    Type.(<>)((# "" x : Type #), (# "" y : Type #))
+let inline (^) f x = f x
 
 let unsupported (ty: Type) = fail ^ sprintf "unsupported type %A" ty
 
