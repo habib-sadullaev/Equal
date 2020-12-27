@@ -1,7 +1,6 @@
 ﻿module ExpressionTests
 
 open Expecto
-open FParsec
 open TypeShape.Core.StagingExtensions
 open Equal.Expression
 
@@ -14,7 +13,6 @@ let equal actual expected message =
 
 let inline should compare expected input =
     let name = sprintf "parses '%s'" input |> String.map ^ function '.' -> '_' | x -> x
-    let expected = expected
     test name { parsed parser compare (Expr.cleanup expected) input } |> testLabel "with valid input"
 
 let inline shouldFailWith expected input =

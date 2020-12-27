@@ -13,7 +13,7 @@ let rec C = wrap ^ nameof C
 let rec D = wrap ^ nameof D
 let rec E = wrap ^ nameof E
 
-let logicalParser = 
+let parser = 
     mkLogicalChain ^ choice [
         A |> stringReturn ^ nameof A
         B |> stringReturn ^ nameof B
@@ -23,14 +23,13 @@ let logicalParser =
 
 let inline should compare expected input =
     let name = sprintf "parses '%s'" input
-    let expected = expected
-    test name { parsed logicalParser compare expected input } |> testLabel "with valid input"
+    test name { parsed parser compare expected input } |> testLabel "with valid input"
 
 let equal = Expect.equal
 
 let inline shouldFailWith expected input =
     let name = sprintf "fails parsing '%s'" input
-    test name { failed logicalParser expected input } |> testLabel "with invalid input"
+    test name { failed parser expected input } |> testLabel "with invalid input"
 
 [<Tests>]
 let tests =

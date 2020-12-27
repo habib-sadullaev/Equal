@@ -1,6 +1,5 @@
 ﻿module UntypedExpressionTests
 
-open FSharp.Quotations
 open Expecto
 open TypeShape.Core.StagingExtensions
 open FParsec
@@ -9,15 +8,12 @@ open Equal.Expression
 #nowarn "49"
 
 let parser = mkLambdaUntyped typeof<TestRecord>
-
 let inline equal actual expected message =
     Expect.equal (string actual) (string expected) message
 
-let inline should compare (expected: Expr<'T>) input =
+let inline should compare expected input =
     let name = sprintf "parses '%s'" input |> String.map ^ function '.' -> '_' | x -> x
-    let expected = expected
-    test name { parsed (parser |>> Expr.cast<'T>) compare (Expr.cleanup expected) input } |> testLabel "with valid input"
-    |> testLabel "with valid input"
+    test name { parsed (parser |>> Expr.cast) compare (Expr.cleanup expected) input } |> testLabel "with valid input"
 
 let inline shouldFailWith expected input =
     let name = sprintf "fails parsing '%s'" input |> String.map ^ function '.' -> '_' | x -> x
