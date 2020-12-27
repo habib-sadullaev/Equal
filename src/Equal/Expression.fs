@@ -31,41 +31,46 @@ and private mkLambdaAux<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
     | Shape.Bool -> preturn ^ wrap <@ fun x -> x @>
 
     | Shape.String ->
-        parse { let! cmp = stringComparison()
-                and! rhs = mkConst()
-                return wrap <@ fun lhs -> (%cmp) lhs %rhs @> }
+        parse { 
+            let! cmp = stringComparison()
+            and! rhs = mkConst()
+            return wrap <@ fun lhs -> (%cmp) lhs %rhs @> 
+        }
 
     | Shape.Enumerable s ->
-        s.Accept { new IEnumerableVisitor<_> with
-            member _.Visit<'c, 'e when 'c :> 'e seq>() =
-                let emptiness = parse { 
-                    let! cmp = emptiness()
-                    return wrap <@ fun (source : 'c) -> (%cmp) source @>
-                }
+        s.Accept { 
+            new IEnumerableVisitor<_> with
+                member _.Visit<'c, 'e when 'c :> 'e seq>() =
+                    let emptiness = parse { 
+                        let! cmp = emptiness()
+                        return wrap <@ fun (source : 'c) -> (%cmp) source @>
+                    }
 
-                let existence = parse { 
-                    let! cmp = existence()
-                    and! pred = parenthesize ^ mkLambdaCached ctx
-                    return wrap <@ fun (source: 'c) -> (%cmp) %pred source @> 
-                }
+                    let existence = parse { 
+                        let! cmp = existence()
+                        and! pred = parenthesize ^ mkLambdaCached ctx
+                        return wrap <@ fun (source: 'c) -> (%cmp) %pred source @> 
+                    }
 
-                emptiness <|> existence
+                    emptiness <|> existence
         }
     
     | Shape.FSharpOption s ->
-        s.Element.Accept { new ITypeVisitor<_> with
-            member _.Visit<'t>() = parse {
-                let! cmp = mkLambdaCached ctx
-                return wrap <@ fun (lhs: 't option) -> lhs.IsSome && (%cmp) lhs.Value @>
-            }
+        s.Element.Accept { 
+            new ITypeVisitor<_> with
+                member _.Visit<'t>() = parse {
+                    let! cmp = mkLambdaCached ctx
+                    return wrap <@ fun (lhs: 't option) -> lhs.IsSome && (%cmp) lhs.Value @>
+                }
         }
     
     | Shape.Nullable s ->
-        s.Accept { new INullableVisitor<_> with
-            member _.Visit<'t when 't : (new : unit -> 't) and 't :> ValueType and 't : struct>() = parse {
-                let! cmp = mkLambdaCached ctx
-                return wrap <@ fun (lhs: 't Nullable) -> lhs.HasValue && (%cmp) lhs.Value @>
-            }
+        s.Accept { 
+            new INullableVisitor<_> with
+                member _.Visit<'t when 't : (new : unit -> 't) and 't :> ValueType and 't : struct>() = parse {
+                    let! cmp = mkLambdaCached ctx
+                    return wrap <@ fun (lhs: 't Nullable) -> lhs.HasValue && (%cmp) lhs.Value @> 
+                } 
         }
 
     | Shape.Poco _ ->
@@ -76,21 +81,22 @@ and private mkLambdaAux<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
         }
     
     | Shape.Comparison s ->
-        s.Accept { new IComparisonVisitor<_> with
-            member _.Visit<'t when 't: comparison>() =
-                let comparison = parse {
-                    let! cmp = numberComparison()
-                    and! rhs = mkConst()
-                    return wrap <@ fun (lhs: 't) -> (%cmp) lhs %rhs @>
-                }
+        s.Accept { 
+            new IComparisonVisitor<_> with
+                member _.Visit<'t when 't: comparison>() =
+                    let comparison = parse {
+                        let! cmp = numberComparison()
+                        and! rhs = mkConst()
+                        return wrap <@ fun (lhs: 't) -> (%cmp) lhs %rhs @> 
+                    }
 
-                let inclusion = parse {
-                    let! cmp = inclusion()
-                    and! rhs = mkConst()
-                    return wrap <@ fun (lhs: 't) -> (%cmp) lhs %rhs @>
-                }
+                    let inclusion = parse {
+                        let! cmp = inclusion()
+                        and! rhs = mkConst()
+                        return wrap <@ fun (lhs: 't) -> (%cmp) lhs %rhs @>
+                    }
 
-                comparison <|> inclusion
+                    comparison <|> inclusion
         }
 
     | _ -> unsupported typeof<'T>
