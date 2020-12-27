@@ -9,7 +9,6 @@
     <NETCORE Condition="'$(TargetFramework)'=='netcoreapp3.1'">true</NETCORE>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="PrototypeTests.fs" />
     <Compile Include="Core.fs" />
     <Compile Include="ConstantTests.fs" />
     <Compile Include="PropertyChainTests.fs" />
@@ -18,6 +17,8 @@
     <Compile Include="ExpressionTests.fs" />
     <Compile Include="UntypedExpressionTests.fs" />
     <Compile Include="LinqExpressionTests.fs" />
+    <Compile Include="Prototype.fs" />
+    <Compile Include="PrototypeTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>

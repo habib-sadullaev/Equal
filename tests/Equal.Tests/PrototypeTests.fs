@@ -6,8 +6,6 @@ open Equal.Prototype
 
 #nowarn "86"
 
-type FailInfo = { position: int64; errors: string list }
-
 let ok parser input =
     match run (parser .>> eof) input with
     | Success(v, _, _) -> v

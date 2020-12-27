@@ -4,7 +4,6 @@
     <DefineConstants>$(DefineConstants);TESTS_FRIENDLY</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Prototype.fs" />
     <Compile Include="ParserCombinator.fs" />
     <Compile Include="Core.fs" />
     <Compile Include="Primitives.fs" />
