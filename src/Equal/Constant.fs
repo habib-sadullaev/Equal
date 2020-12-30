@@ -6,14 +6,11 @@ open TypeShape.Core
 open TypeShape.Core.Utils
 
 let rec mkConst<'T> () : Parser<'T> =
-    let res =
-        match cache.TryFind() with
-        | Some x -> x
-        | None ->
-            use ctx = cache.CreateGenerationContext()
-            mkConstCached<'T> ctx
-    
-    res |>> constExpr
+    match cache.TryFind() with
+    | Some x -> x
+    | None ->
+        use ctx = cache.CreateGenerationContext()
+        mkConstCached<'T> ctx |>> constExpr
 
 and private mkConstCached<'T> (ctx: TypeGenerationContext) : Parser<'T, State> =
     let delay (c: Cell<Parser<'T, State>>) s = c.Value s
