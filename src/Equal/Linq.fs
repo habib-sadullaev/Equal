@@ -84,10 +84,12 @@ module private Linq =
 
     let toLambdaExpression (e: Expr) : LambdaExpression = 
         normalize e |> LeafExpressionConverter.QuotationToExpression :?> LambdaExpression
-
+    
+    // embedded-expr = [ where-expr ] [ orderby-expr ]
     let mkLinqExpression<'T> : Parser<QueryResult<'T>, State> =
         let orderBy = skipStringCI "ORDER BY" >>. spaces
         
+        // where-expr = expr
         let predicate =
             fun stream ->
                 // check that there is no predicate expression
@@ -108,20 +110,23 @@ module private Linq =
 
                     predicate
         
-        let orderBy =
-            let asc  = stringCIReturn "ASC" true 
+        // orderby-expr  = 'ORDER BY' orderby-chain
+        let orderByChain =
+            let asc  = stringCIReturn "ASC" true
             let desc = stringCIReturn "DESC" false
 
+            // orderby = untyped-expr [ direction ]
             let expr = parse {
                 let! selector = mkLambdaUntyped typeof<'T> .>> spaces
-                and! direction = desc <|> asc <|>% true .>> spaces
+                and! direction = asc <|> desc <|>% true
                 return { Selector = toLambdaExpression selector; Ascending = direction }
             }
 
+            // orderby-chain = orderby { ',' orderby }
             orderBy >>. sepBy (expr .>> spaces) (pchar ',' .>> spaces) <|>% []
-
+        
         parse { let! pred = predicate
-                and! ord  = orderBy
+                and! ord  = orderByChain
                 return { Predicate = downcast toLambdaExpression pred
                          OrderBy = ord } }
 

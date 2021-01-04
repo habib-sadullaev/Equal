@@ -45,12 +45,12 @@ let tests =
 
         "Children IS EMPTY" |> should equal <@ (%param).Children.IsSome && List.isEmpty (%param).Children.Value @>
 
-        "HasValue = true"     |> shouldFailWith { position = 10L; errors = [ "AND"; "OR"; "end of input" ] }
-        "Int > 0 andHasValue" |> shouldFailWith { position =  9L; errors = ["AND"; "OR"; "end of input"] }
-        "Int > 0 orHasValue"  |> shouldFailWith { position =  9L; errors = ["AND"; "OR"; "end of input"] }
-        "String = 'zzz'"      |> shouldFailWith { position =  8L; errors = [ "CONTAINS"; "ENDS WITH"; "STARTS WITH" ] }
-        "Parent.Parent.Int"   |> shouldFailWith { position = 18L; errors = [ "<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN" ] }
-        "NullableFloat"       |> shouldFailWith { position = 14L; errors = [ "<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN" ] }
+        "HasValue = true"     |> shouldFailWith { position = 10L; errors = ["end of input"] }
+        "Int > 0 andHasValue" |> shouldFailWith { position =  8L; errors = ["end of input"] }
+        "Int > 0 orHasValue"  |> shouldFailWith { position =  8L; errors = ["end of input"] }
+        "String = 'zzz'"      |> shouldFailWith { position =  8L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"] }
+        "Parent.Parent.Int"   |> shouldFailWith { position = 18L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
+        "NullableFloat"       |> shouldFailWith { position = 14L; errors = ["<"; "<="; "<>"; "="; ">"; ">="; "IN"; "NOT IN"] }
         "OptionalString"      |> shouldFailWith { position = 15L; errors = ["CONTAINS"; "ENDS WITH"; "STARTS WITH"] }
-        "(HasValue"           |> shouldFailWith { position = 10L; errors = [")"; "AND"; "OR"] }
+        "(HasValue"           |> shouldFailWith { position =  1L; errors = propsof<TestRecord> }
     ]

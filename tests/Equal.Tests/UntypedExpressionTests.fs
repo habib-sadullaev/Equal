@@ -45,8 +45,8 @@ let tests =
         "Int > 0 andHasValue" |> shouldFailWith { position =  9L; errors = ["AND"; "OR"; "end of input"] }
         "Int > 0 orHasValue"  |> shouldFailWith { position =  9L; errors = ["AND"; "OR"; "end of input"] }
         
-        "Int > 0 && String contains 'a'" |> shouldFailWith { position =  9L; errors = [ "AND"; "OR"; eof ] }
-        "NOT Parent.Parent"              |> shouldFailWith { position =  5L; errors = [ "(" ] }
+        "Int > 0 && String contains 'a'" |> shouldFailWith { position =  9L; errors = ["AND"; "OR"; eof] }
+        "NOT Parent.Parent"              |> shouldFailWith { position =  5L; errors = ["("] }
         "Parent.Parent.HasValue OR"      |> shouldFailWith { position = 26L; errors = ["("; "NOT"; yield! propsof<TestRecord>] }
         "OptionalEnum = one AND"         |> shouldFailWith { position = 23L; errors = ["("; "NOT"; yield! propsof<TestRecord>] }
         

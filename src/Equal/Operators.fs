@@ -13,7 +13,7 @@ let stringComparison () : Parser<Expr<string -> string -> bool>, 'u> =
         stringCIReturn "ENDS WITH"   <@ fun x y -> x.EndsWith   y @>
     ] .>> spaces
 
-let numberComparison ()  =
+let arithmeticComparison ()  =
     choice [
         stringReturn "="  <@ (=)  @>
         stringReturn "<>" <@ (<>) @>

@@ -8,8 +8,7 @@ open TypeShape.Core.Utils
 open TypeShape.Core.StagingExtensions
 open Equal.Constant
 
-let private cache = TypeCache()
-
+// expr
 let rec mkLambda<'T> () : Parser<'T -> bool> =
     match cache.TryFind() with
     | Some v -> v
@@ -17,6 +16,7 @@ let rec mkLambda<'T> () : Parser<'T -> bool> =
         use ctx = cache.CreateGenerationContext()
         mkLambdaCached ctx
 
+// expr
 and mkLambdaCached<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
         let delay (c: Cell<Parser<'T -> bool>>) s = c.Value s
         match ctx.InitOrGetCachedValue delay with
@@ -25,27 +25,35 @@ and mkLambdaCached<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
             let v = mkLambdaAux ctx
             ctx.Commit t v
 
+// expr
 and private mkLambdaAux<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
     let wrap (e: Expr<'a -> bool>) = unbox<Expr<'T -> bool>> e
     match shapeof<'T> with
-    | Shape.Bool -> preturn ^ wrap <@ fun x -> x @>
-
+    // bool = prop-chain
+    | Shape.Bool -> 
+        preturn ^ wrap <@ fun x -> x @>
+    
+    // string-comparison = prop-chain operator literal
+    // operator          = ( 'STARTS WITH' | 'CONTAINS' | 'ENDS WITH' )
     | Shape.String ->
-        parse { 
-            let! cmp = stringComparison()
-            and! rhs = mkConst()
-            return wrap <@ fun lhs -> (%cmp) lhs %rhs @> 
-        }
+        parse { let! cmp = stringComparison()
+                and! rhs = mkConst()
+                return wrap <@ fun lhs -> (%cmp) lhs %rhs @> }
 
-    | Shape.Enumerable s ->
-        s.Accept { 
+    // collection-comparison = ( emptiness | existence ) 
+    | Shape.Enumerable shape ->
+        shape.Accept { 
             new IEnumerableVisitor<_> with
                 member _.Visit<'c, 'e when 'c :> 'e seq>() =
+                    // emptiness = prop-chain 'IS EMPTY'
                     let emptiness = parse { 
                         let! cmp = emptiness()
                         return wrap <@ fun (source : 'c) -> (%cmp) source @>
                     }
 
+                    // existence = prop-chain operator predicate
+                    // operator  = ( 'ANY' | 'ALL' )
+                    // predicate = '(' expr ')'
                     let existence = parse { 
                         let! cmp = existence()
                         and! pred = parenthesize ^ mkLambdaCached ctx
@@ -55,8 +63,9 @@ and private mkLambdaAux<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
                     emptiness <|> existence
         }
     
-    | Shape.FSharpOption s ->
-        s.Element.Accept { 
+    // option-comparison = expr
+    | Shape.FSharpOption shape -> 
+        shape.Element.Accept { 
             new ITypeVisitor<_> with
                 member _.Visit<'t>() = parse {
                     let! cmp = mkLambdaCached ctx
@@ -64,54 +73,74 @@ and private mkLambdaAux<'T> (ctx: TypeGenerationContext) : Parser<'T -> bool> =
                 }
         }
     
-    | Shape.Nullable s ->
-        s.Accept { 
+    // nullable-comparison = common-comparison
+    | Shape.Nullable shape ->
+        shape.Accept { 
             new INullableVisitor<_> with
-                member _.Visit<'t when 't : (new : unit -> 't) and 't :> ValueType and 't : struct>() = parse {
+                member _.Visit<'t when 't : (new : unit -> 't)
+                                   and 't :> ValueType 
+                                   and 't : struct>() = parse {
                     let! cmp = mkLambdaCached ctx
                     return wrap <@ fun (lhs: 't Nullable) -> lhs.HasValue && (%cmp) lhs.Value @> 
                 } 
         }
 
-    | Shape.Poco _ ->
-        parse { 
-            let! param = newParam typeof<'T>
-            let! body = mkComparison (Expr.Var param)
-            return Expr.Lambda(param, body) |> Expr.cast<'T -> bool>
-        }
-    
-    | Shape.Comparison s ->
-        s.Accept { 
+    // common-comparison = ( arithmetic-comparison | inclusion )
+    | Shape.Struct _ & Shape.Comparison shape ->
+        shape.Accept { 
             new IComparisonVisitor<_> with
                 member _.Visit<'t when 't: comparison>() =
-                    let comparison = parse {
-                        let! cmp = numberComparison()
+                    // arithmetic-comparison = prop-chain operator value
+                    // operator              = ( '>' | '>=' | '=' | '<>' | '<=' | '<' )
+                    // value                 = ( number | enum | datetime )
+                    let arithmeticComparison = parse {
+                        let! cmp = arithmeticComparison()
                         and! rhs = mkConst()
                         return wrap <@ fun (lhs: 't) -> (%cmp) lhs %rhs @> 
                     }
 
+                    // inclusion = prop-chain operator const-array
+                    // operator  = ( 'IN' | 'NOT IN' )
                     let inclusion = parse {
                         let! cmp = inclusion()
                         and! rhs = mkConst()
                         return wrap <@ fun (lhs: 't) -> (%cmp) lhs %rhs @>
                     }
 
-                    comparison <|> inclusion
+                    arithmeticComparison <|> inclusion
         }
+
+    // entry point
+    // expr        = node { operator node }
+    // node        = ( negation | nested-expr | comparison )
+    // negation    = 'NOT' nested-expr
+    // nested-expr = '(' expr ')'
+    // comparison  = ( string-comparison | collection-comparison | nullable-comparison | option-comparison | common-comparison | bool )
+    // operator    = ( 'OR' | 'AND' ) 
+    | Shape.Poco _ ->
+        parse { let! param = newParam typeof<'T>
+                let! body = mkLogicalChain ^ mkComparison ^ Expr.Var param
+                return Expr.Lambda(param, body) |> Expr.cast<'T -> bool> }
 
     | _ -> unsupported typeof<'T>
 
-and mkComparison param =
-    mkPropChain param >>= fun prop -> 
-        TypeShape.Create(prop.Type).Accept { 
+and private cache : TypeCache = TypeCache()
+
+// comparison  = ( string-comparison | collection-comparison | nullable-comparison | option-comparison | common-comparison | bool )
+and mkComparison param = 
+    parse {
+        let! prop = mkPropChain param
+        return! TypeShape.Create(prop.Type).Accept { 
             new ITypeVisitor<_> with
-                override _.Visit<'t>() = parse { 
+                override _.Visit<'t>() = parse {
                     let! cmp = mkLambda<'t>() 
-                    return <@ (%cmp) %(Expr.Cast prop) @>
+                    return Expr.cleanup <@ (%cmp) %(Expr.Cast prop) @>
                 }
         }
-    |> mkLogicalChain
+    }
 
+// prop-chain = prop { '.' prop }
+// prop       = string
 and mkPropChain (instance: Expr) : Parser<Expr, State> =
     let ty = instance.Type
     
@@ -143,7 +172,13 @@ and mkPropChain (instance: Expr) : Parser<Expr, State> =
 
         | _ -> expectedProps
 
+// operation         = operand { operator operand }
+// operand           = ( negation | nested-operation | bool-expr )
+// negation          = 'NOT' nested-operation
+// nested-operation  = '(' operation ')'
+// operator          = ( 'OR' | 'AND' )
 and mkLogicalChain parser =
+    // operation = operand { operator operand }
     let mkOperation operator operand =
         operator .>> spaces |> chainl1 (operand .>> spaces)
     
@@ -153,16 +188,19 @@ and mkLogicalChain parser =
     let nestedOperation = parenthesize operation
     let negation = NOT nestedOperation
     
+    // operand = ( negation | nested-operation | bool-expr )
     operandRef := choice [ negation; nestedOperation; parser ]
     
     operation |>> Expr.cleanup
 
+/// creates a strongly typed expression but its type is resolved at runtime
+// untyped-expr = ( expr | prop-chain )
 let mkLambdaUntyped ty = 
     fun stream ->
         let param = (newParam ty stream).Result
         let var  = Expr.Var param
         let prop = mkPropChain var .>> eof |>> fun prop -> Expr.Lambda(param, prop)
-        let cmp  = mkComparison var |>> fun cmp  -> Expr.Lambda(param,  cmp)
+        let cmp  = mkLogicalChain ^ mkComparison var |>> fun cmp  -> Expr.Lambda(param,  cmp)
         
         // first try to parse the input using the comparison parser
         let init = stream.State
