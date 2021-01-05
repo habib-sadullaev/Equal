@@ -2,11 +2,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net462;netcoreapp3.1</TargetFrameworks>
+    <TargetFrameworks>net462;netcoreapp3.1;net50</TargetFrameworks>
     <GenerateProgramFile>false</GenerateProgramFile>
     <LangVersion>latest</LangVersion>
     <NETFX Condition="'$(TargetFramework)'=='net462'">true</NETFX>
-    <NETCORE Condition="'$(TargetFramework)'=='netcoreapp3.1'">true</NETCORE>
+    <NETCORE Condition="'$(TargetFramework)'!='net462'">true</NETCORE>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Core.fs" />
