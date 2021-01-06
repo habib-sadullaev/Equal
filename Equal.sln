@@ -12,6 +12,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		license.md = license.md
 		paket.dependencies = paket.dependencies
 		paket.lock = paket.lock
+		readme.md = readme.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".config", ".config", "{4C944312-5D8F-41DC-99DE-695D617CFB96}"
