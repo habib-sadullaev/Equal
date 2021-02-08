@@ -9,39 +9,25 @@ module StagingExtensions =
         open FSharp.Quotations
         open FSharp.Quotations.Patterns
         open FSharp.Quotations.ExprShape
+        open FSharp.Quotations.DerivedPatterns
         open TypeShape.Core.StagingExtensions
 
         let untyped (x: Expr<'a>) = x.Raw
-    
+
+        /// traverses an expression tree applying the transformation
+        /// `(fun x y z .. -> M[x,y,z,..]) a b c` => `M[a,b,c,..]`
         let unlambda (expr : Expr<'T>) =
             let (|AppLambdas|_|) (e : Expr) =
-                // traverses the "App(App(App ... " part of the expression
-                let rec gatherApps args e =
-                    match e with
-                    | Application(lhs, rhs) -> gatherApps (rhs :: args) lhs
-                    | _ -> args, e
-    
-                // traverses the "Lambda(Lambda(Lambda ... " part of the expression
-                let rec gatherLambdas args acc e =
-                    match e, args with
-                    | _, [] -> Some (acc, e)
-                    | Lambda(v, body), hd :: tl -> gatherLambdas tl ((v, hd) :: acc) body
-                    | _ -> None
-    
-                // performs substitution of each recovered var with corresponding value
-                let rec substitute vars (body : Expr) =
-                    match vars with
-                    | [] -> body
-                    | (var, value) :: rest ->
-                        let body2 = body.Substitute(function v when v = var -> Some value | _ -> None)
-                        substitute rest body2
-    
-                match gatherApps [] e with
-                | [], _ -> None
-                | args, body ->
-                    match gatherLambdas args [] body with
-                    | None -> None
-                    | Some(vars, body) -> Some(substitute vars body)
+                match e with
+                | Applications(Lambdas(args, body), vals) ->
+                    let flatten x = List.collect id x
+                    let replacements = 
+                        flatten vals
+                        |> List.zip (flatten args)
+                        |> Map.ofList
+
+                    body.Substitute(replacements.TryFind) |> Some
+                | _ -> None
     
             // traverse the full expression tree
             let rec aux e =
