@@ -3,7 +3,7 @@
 open FSharp.Quotations
 open Expecto
 open FParsec
-open Equal.Expression
+open Equal.LogicalChain
 
 let wrap str = Var(str, typeof<bool>) |> Expr.Var |> Expr.Cast<bool>
 

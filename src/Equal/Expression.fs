@@ -7,6 +7,7 @@ open TypeShape.Core
 open TypeShape.Core.Utils
 open TypeShape.Core.StagingExtensions
 open Equal.Constant
+open Equal.LogicalChain
 
 // expr
 let rec mkLambda<'T> () : Parser<'T -> bool> =
@@ -171,27 +172,6 @@ and mkPropChain (instance: Expr) : Parser<Expr, State> =
                 if stream.Skip '.' then mkPropChain next stream else Reply next
 
         | _ -> expectedProps
-
-// operation         = operand { operator operand }
-// operand           = ( negation | nested-operation | bool-expr )
-// negation          = 'NOT' nested-operation
-// nested-operation  = '(' operation ')'
-// operator          = ( 'OR' | 'AND' )
-and mkLogicalChain parser =
-    // operation = operand { operator operand }
-    let mkOperation operator operand =
-        operator .>> spaces |> chainl1 (operand .>> spaces)
-    
-    let operand, operandRef = createParserForwardedToRef()
-
-    let operation = mkOperation OR (mkOperation AND operand)
-    let nestedOperation = parenthesize operation
-    let negation = NOT nestedOperation
-    
-    // operand = ( negation | nested-operation | bool-expr )
-    operandRef := choice [ negation; nestedOperation; parser ]
-    
-    operation |>> Expr.cleanup
 
 /// creates a strongly typed expression but its type is resolved at runtime
 // untyped-expr = ( expr | prop-chain )
